@@ -1,0 +1,119 @@
+---
+title: "运用R创建描述基本特征“Table 1”"
+author: "余文华"
+date: "2016年4月4日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+    描述病人基本特征应该算是每个医学研究论文所必须的步骤，而且常以“Table 1”表示，说明其在研究中的重要位置。 R非 常人性化的方便了我们医学生来处理研究资料的病人基本特征。tableone包就是为描述人群基本特征的R包之一。我们来一起分享R的方便和强大吧！
+    
+##例子引入
+
+    为了说明tableone包，我们采用了SCAN中tableone的说明文档中的例子。数据来自survival包中梅奥诊所原发性胆汁性肝硬化pbc数据(Mayo Clinic Primary Biliary Cirrhosis Data)。共424例PBC患者参与10年的生存分析，具体数据描述可以在R帮助中搜索pbc查看。
+    
+```{r}
+## 载入Mayo Clinic Primary Biliary Cirrhosis数据
+library(survival)
+library(pander)
+data(pbc)
+## 检查变量
+head(pbc)
+str(pbc)
+```
+
+##数据处理
+
+    我们查看了数据结构，发现许多分类变量仍然是整数型或数值型。现在需要把这些变量转换为因子型。至于为什么都需要转换，看到后面就知道了。
+ 
+```{r}
+varsToFactor <- c("status","trt","ascites","hepato","spiders","edema","stage")
+pbc[varsToFactor] <- lapply(pbc[varsToFactor], factor)
+```
+
+##开始运用tableone包
+
+###创建需要描述的变量列表
+
+    在本例中，我们想知道D-penicillamine药物组和安慰剂组在生存时间(time)、生存状态(status)、年龄(age)、性别(sex)及一些临床指标等资料的基本特征及差异。创建vars变量列表存放需要比较和描述的变量名。
+    
+```{r}
+dput(names(pbc))
+vars <- c("time","status","age","sex","ascites","hepato",
+          "spiders","edema","bili","chol","albumin",
+          "copper","alk.phos","ast","trig","platelet",
+          "protime","stage")
+```
+
+###以不同组(trt)分层创建Table 1
+
+    创建table one的函数非常简单，CreatTableOne()函数，只需要指出需描述的变量，即前面的vars变量列表，strata参数说明按照trt变量分层即可。注意的是如果前面没有指定分类变量类型，tableone会以数值型变量处理你的变量的，这也就是需要提前指定分类变量的原因。
+    
+```{r}
+library(tableone)
+tableOne <- CreateTableOne(vars = vars, strata = c("trt"), data = pbc)
+table1 <- print(tableOne)
+```
+
+    可以看到一个非常熟悉的table one了，行分别为n(病例个数)、time、status等等。可以发现计量变量都是用“(mean (sd))”描述、分类变量用“ (%) ”表示，还神奇的算出了P值。大家肯定喜出望外，妈妈再也不用担心我不会算P值了。这个表好像就能用了。但是你太“simple”了，统计如果这么简单，还用我们学统计的干嘛-_-。
+    大家也许注意到了最后一列还有个test是空着的，问题就在这里，这些P值是用什么test算出来的呢？还有像本例中的临床生化指标，肯定是偏态分布的，用“(mean (sd))”描述也是错误的呀。下面让我们来完善这个table one吧！
+    
+```{r,eval=FALSE, message=FALSE, include=FALSE}
+# Load the packages
+library(ReporteRs)
+library(magrittr)
+
+# The script
+docx( ) %>% 
+     addFlexTable(table1 %>%
+               FlexTable(header.cell.props = cellProperties( background.color = "#003366"),
+                    header.text.props = textBold(color = "white"),
+                    add.rownames = TRUE ) %>%
+               setZebraStyle(odd = "#DDDDDD", even = "#FFFFFF")) %>%
+     writeDoc(file = "table2.docx")
+# open the Word doc
+browseURL("table2.docx")
+```
+
+ 
+###指定变量分析方法
+
+    默认情况下，tableone使用正态分布方法分析资料，因此会出现“(mean (sd))”的描述，两组计量资料用oneway.test函数，t检验分析，分类资料用 chisq.test函数，卡方检验分析，默认有矫正卡方，精确性检验用fisher.test函数Fisher检验等等。
+    我们可以指定变量是进行正态或非正态检验方法。
+    
+```{r}
+table1 <- print(tableOne, nonnormal = c("bili","chol","copper","alk.phos","trig"),
+      exact = c("status","stage"), cramVars = "hepato", smd = TRUE)
+```
+
+```{r,eval=FALSE, message=FALSE, include=FALSE}
+
+# The script
+docx( ) %>% 
+     addFlexTable(table1 %>%
+               FlexTable(header.cell.props = cellProperties( background.color = "#003366"),
+                    header.text.props = textBold(color = "white"),
+                    add.rownames = TRUE ) %>%
+               setZebraStyle(odd = "#DDDDDD", even = "#FFFFFF")) %>%
+     writeDoc(file = "table1.docx")
+# open the Word doc
+browseURL("table1.docx")
+```
+
+    在这里我们通过nonnormal =指定对血清胆红素bili)、血清胆固醇(chol)、尿铜(copper)等临床生化非正态指标用非参检验方法，对生存状态（"status"）、临床分期（stage）用Fisher检验。同时用cramVars参数可以显示两个水平的分类变量构成比，smd参数为显示standardized mean differences。
+    可以看到指定的非正态资料使用“median [IQR]”来表示数据了，而且在test列也出现了P值计算使用的方法，最后一列为SMD数值，这一切都是我们需要的。
+    
+###通过Summary查看tableone
+
+    我们也可以通过 summary.TableOne方法，查看更详细的数据信息。里面包含了按照trt分层，计量资料及分类资料的基本统计描述和正态及非正态方法下的P值等信息。
+    
+```{r}
+library(printr)
+summary(tableOne)
+```
+
+
+    
