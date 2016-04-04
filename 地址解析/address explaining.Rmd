@@ -1,0 +1,50 @@
+---
+title: "地址解析"
+author: "余文华"
+date: "2016年2月25日"
+output: html_document
+---
+##数据来源
+
+    我们的数据来源于2015上海开放数据创新大赛(SODA)提供的开放道路事故数据，数据事项具体包括“事故ID、事故类型、事故地点、事故时间”。
+
+###读取数据并进行数据转换
+```{r}
+datas <- read.csv(file = "accident.txt",header = TRUE,stringsAsFactors = FALSE,encoding = "UTF-8")
+
+datas$address <- gsub(",(.*)",'',datas$SGDD)
+datas$time <- gsub("(.*),",'',datas$SGDD)
+datas <- datas[,c(1,3,6,7)]
+datas$DMSM1 <- factor(datas$DMSM1)
+```
+
+##获取地址经纬度
+
+*.运用百度地图API进行地址解析。地址解析，是用户输入一个详细的地址，例如“北京市中关村南大街27号中央民族大学”，那么地址解析接口，会返回一个经纬度Point。
+    获取地址解析，需要你首先在百度地图开发平台“申请密钥”，运用geocoder进行解析(里面有说明就不细说啦)。注意参数：“output”产出格式,本文为XML格式，“ak”为你从百度申请到的密钥，“address”就是需要查询的地址了。
+
+*.运用网络爬虫Rcurl包及XML包进行地理坐标抓取
+
+```{r}
+library(RCurl)
+library(XML)
+a <-NULL
+address <- NULL
+doc <- NULL
+lat <- NULL
+lng <- NULL
+for(i in 1:nrow(datas)){
+        a[i] <- paste0("http://api.map.baidu.com/geocoder/v2/?address=","上海市",datas$address[i],"&output=XML&ak=6MRdtm6SQ7BzAqEtlvVFAWIB&callback=showLocation")
+        address[i] <- getURL(a[i],.encoding="utf-8")
+        doc <- htmlTreeParse(address,useInternal = TRUE)
+#搜索地理坐标
+        lat <- xpathSApply(doc,"//lat",xmlValue)
+        lng <- xpathSApply(doc,"//lng",xmlValue)
+}
+datas$lat <-lat
+datas$lng <-lng
+head(datas)
+write.csv(datas,"data.csv")
+```
+
+

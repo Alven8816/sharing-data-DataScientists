@@ -1,0 +1,110 @@
+---
+title: "运用R实现在Pubmed上查询"
+author: "余文华"
+date: "2016年3月20日"
+output: html_document
+---
+##基本介绍
+    
+    Pubmed对于我们学医的来说再熟悉不过了，如何通过R来实现在Pubmed上查询，抓取Pubmed上发表文章的相关信息，更好的指导我们了解本研究领域，或发现些有趣的信息呢？有个神奇的包：RISmed包，可以实现它，让我们一起来看看吧！
+    
+    RISmend包可以提取NCBI数据库的书目数据，自然包括Pubmed数据库。基本上在Pubmed里面文章的题目、作者、摘要等信息都可以方便的提取。不过包内有个温馨提示哦：
+    
+> In order not to overload the E-utility servers, NCBI recommends that users post no more than three URL requests per second and limit large jobs to either weekends or between 9:00 PM and 5:00 AM Eastern time during weekdays. Failure to comply with this policy may result in an IP address being blocked from accessing NCBI.
+   
+##基本操作
+
+###EUtilsSummary获取查询结果
+    我们通过EUtilsSummary()函数提取查询的结果。例如：
+    
+```{r}
+library(RISmed)
+res <- EUtilsSummary("Meta analysis[ti]",type = "esearch",db="pubmed",mindate= 2000,maxdate=2015)
+summary(res)
+```
+
+    我们查询了从2000年到2015年在Pubmed数据库中题目含有“Meta analysis”的Meta文章。坊间传闻Meta分析已经是中国人发SCI文章的“神器”，我们来看看真假吧！type参数是NCBI E-utility 的类型，一般选“esarch”,db为选择数据库，我们选“pubmed”，mindate和maxdate为查询时间范围。
+    用summary()可以查看到查询文章的数目:一共有44386篇Meta发表。
+    再来看看从2000年来，每年发表Meta分析的数量：
+```{r}
+#查看每年文章分布
+eachyear<- array()
+x <- 1
+for (i in 2000:2015){
+  Sys.sleep(1)
+  r <- EUtilsSummary('Meta analysis[ti]', type='esearch', db='pubmed', mindate=i, maxdate=i)
+  eachyear[x] <- QueryCount(r)
+  x <- x + 1
+}
+```
+
+```{r,results='hide'}
+year<- 2000:2015
+max(eachyear)
+count<-data.frame(year,eachyear)
+barplot(count$eachyear, las=2, ylim=c(0,11000), main="Number of PubMed articles \n which its title containing Meta analysis")
+axis(1,seq(from = 0.7,by = 1.2, length.out = 16),labels = year,tick = FALSE,cex.axis = 0.8)
+text(labels = eachyear,cex = 0.7,x = seq(from = 0.7,by =1.2,length.out = 16),y= eachyear+1000)
+```
+
+
+###EUtilsGet()对获取查询结果数据下载
+
+    运用EUtilsGet()函数，可以对EUtilsSummary获取的结果进行下载，配合ArticleTitle(),AbstractText(),Title()等“提取”函数，提取查询结果的文章题目、摘要、发表期刊等各类文章信息。
+    我们通过Affiliation()提取文章“所属”地址信息，来看看属于中国发表的Meta分析分布情况。
+
+```{r,echo=TRUE}
+affs<- array()
+x <- 1
+for (i in 2000:2015){
+  Sys.sleep(1)
+  r <- EUtilsSummary('Meta analysis[ti]', type='esearch', db='pubmed', mindate=i, maxdate=i)
+  affs[x] <- sum(grepl("China",Affiliation(EUtilsGet(r))))
+  x <- x + 1
+}
+names(affs)<- 2000:2015
+affs
+```
+
+```{r}
+barplot(affs, las=2, ylim=c(0,500), main="Number of Meta analysis articles \n in PubMed which come from China ")
+text(labels = affs,cex = 0.7,x = seq(from = 0.7,by =1.2,length.out = 16),y= affs+50)
+```
+
+
+   结果来看，从2008年以后，数据增长非常迅速，近些年国人热衷发Meta分析，确实有据可查。再来看看中国Meta分析占全部文章的百分比图。2008-2013年国人发表的Meta分析占比都在6.8%以上，难道是和中国的GDP速度保持“同步”么！
+
+```{r,results='hold'}
+pro <-affs/eachyear*100
+datas<-data.frame(year,eachyear,china=as.numeric(affs),pro)
+barplot(pro, las=2, ylim=c(0,10),ylab = "percentage(%)", main="Percentage of Meta analysis \n which come from China")
+axis(1,seq(from = 0.7,by = 1.2, length.out = 16),labels = year,tick = FALSE,cex.axis = 0.8)
+text(labels = paste(round(pro,2),"%",sep = ""),cex = 0.7,x = seq(from = 0.7,by =1.2,length.out = 16),y= pro+0.5)
+```
+
+##还可以做什么
+
+    RISmed包让R插上了“想象”的翅膀，Pubmed数据库不再是“别人”的数据库了，里面的几乎所有成了你挖掘的“金矿”，是不是很兴奋啊，结合文本挖掘、时间序列等等，还能做什么就等着你来想吧！
+    文章最后，再举个简单的wordcloud例子，体会下RISmed的强大。
+    先查询到2013-2015年含本人姓名的文章4篇(马老师对不起啦，拿咱团队的文章摘要举例了)，绘制wordcloud，看看我们的主要研究方向或已经发表文章的倾向。
+
+```{r}
+library(wordcloud)
+res2 <- EUtilsSummary("Wenhua Yu[au] Tianjin",type = "esearch",db="pubmed",mindate= 2013,maxdate=2015)
+summary(res2)
+Abstract<- AbstractText(EUtilsGet(res2))
+articles<-data.frame(Abstract)
+abstracts<-as.character(articles$Abstract)
+abstracts<-paste(abstracts, sep="", collapse="") 
+wordcloud(abstracts,colors=brewer.pal(7,"Dark2"))
+```
+
+* 参考资料
+
+> datascience+中由 Aaron Gowins 写的How to Search PubMed with RISmed package in R 课程
+
+> CRAN RISmed说明文档
+
+> Blog: Musings from an unlikely candidate <http://davetang.org/muse/>
+
+> 其他资料

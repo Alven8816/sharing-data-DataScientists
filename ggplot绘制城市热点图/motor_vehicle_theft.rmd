@@ -1,0 +1,157 @@
+---
+title: "[Visualising]运用R绘制城市热点图"
+author: "余文华"
+date: "2016年2月20日"
+output: html_document
+---
+
+    Uber运用大数据，建立了Location-based demand models。每天实时更新的热点地图 (Heatmaps)可以 有效帮助车主缩短空载时间，同时帮乘客减少等待时长。下面这张图甚至可以预测，这样车主会知道提前去哪 里等待可以载到更多的乘客。 下面让我们也一起来学习下Heatmap可视化的建立吧！
+
+<img src = "http://attach.dataguru.cn/attachments/portal/201506/22/210606xz02wgzpwf73p34p.jpg">
+
+## 一、运用ggplot2包绘制热点图
+
+* 我们的代码将包括以下步骤：
+
+1. 读取数据
+
+    我们将使用美国芝加哥机动车盗窃数据，数据的获得：[City of Chicago Data Portal]<https://data.cityofchicago.org/Public-Safety/motor-vehicle-theft/7ac4-d9tk>.在这里我们随机读取了2000个数据。
+    
+2. 数据转换
+
+    我们将把数据转换为R可识别的格式。数据集中数据是字符串类别，我们运用strptime方法转换为我们需要的格式。
+    
+3. 按照时间排序
+
+    我们希望按照周为单位展示热点图，探索机动车盗窃发生时间趋势。
+    
+4. 画热点图
+
+    运用热点图展示在不同时间，机动车盗窃事件数量。
+    
+###下面来实践下吧！
+
+* 数据读取
+
+```{r,echo=TRUE,cache=TRUE}
+library(ggplot2)
+#读取数据
+chicagoMVTs <- read.csv("motor_vehicle_theft.csv",stringsAsFactors = FALSE)
+set.seed(1234)
+n <- sample(nrow(chicagoMVTs),20000,replace = FALSE)
+chicagoMVT <- chicagoMVTs[n,]
+head(chicagoMVT)
+```
+
+* 数据转换
+
+```{r,echo=TRUE}
+#字符串转换为日期时间型格式
+chicagoMVT$Date <- strptime(chicagoMVT$Date, format = "%m/%d/%Y %I:%M:%S")
+
+#获得盗窃发生的日期和时间
+chicagoMVT$Day <- weekdays(chicagoMVT$Date)
+chicagoMVT$Hour <- chicagoMVT$Date$hour
+
+#按照“周”为单位排序
+dailyCrimes <- as.data.frame(table(chicagoMVT$Day, chicagoMVT$Hour))
+names(dailyCrimes) <- c('Day', 'Hour', 'Freq')
+dailyCrimes$Hour <- as.numeric(as.character(dailyCrimes$Hour))
+dailyCrimes$Day <- factor(dailyCrimes$Day, ordered = TRUE, 
+                         levels = c('星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'))
+```
+
+* 盗窃发生时间趋势图
+
+```{r, echo=TRUE}
+library(ggplot2)
+ggplot(dailyCrimes,aes(x = Hour, y = Freq))+geom_line(aes(group = Day, color = Day)) +xlab("小时") +ylab("机动车盗窃发生数") +ggtitle("机动车盗窃每日发生数")
+
+```
+
+    从图中可以看出，盗窃更容易发生在晚上，特别是晚上8-12点。但是图中许多线都有重叠，因此运用热点图来实现可视化更直观。
+    
+* 热点图
+
+```{r,echo= TRUE}
+ggplot(dailyCrimes, aes( x = Hour, y = Day)) + 
+        geom_tile(aes(fill = Freq)) + 
+        scale_fill_gradient(name = "盗窃总数",low ="white", high = "red" )+
+        theme(axis.title.y = element_blank())
+
+```
+
+## 二、在地图上绘制热点图
+
+    前面已经讨论了如何用ggplot绘制热点图，现在让我们来看看如何用R包在地图上绘制热点图。我们需要2个R包：maps包和ggmap包。为了数据清洗，我们还用到了dplyr包和tidyr包。
+    
+* 地图上绘制热点图的步骤：
+
+1. 删除盗窃地址为空的数据。对于许多盗窃事件，地址信息并没有记录，这种删失被称为右删失，即这种删失有一定的原因，具有非随机性。
+
+2. 把location列分解为latitu（维度）和longitude（经度）。location列以（x,y）形式构成，属于字符串类型。为们需要x，y称为独立的两列，同时为数值型。这时我们用到了dplyr和tidyr。
+
+3. 获取芝加哥地图。这时用到了ggmap包。
+
+4. 画位置地图热点图
+
+* 下面来看代码：
+
+
+* 删除location列为空的数据行
+
+```{r}
+chicagoMVT$Location[chicagoMVT$Location ==""] <- NA
+chicagoMVT <- na.omit(chicagoMVT)
+nrow(chicagoMVT)
+```
+
+    我们把location列空值赋值为NA，删除后我们的数据由20000个删减到17490个。
+
+* 把location列分解为latitu（纬度）和longitude（经度）
+
+```{r,echo=TRUE,cache=TRUE}
+library(dplyr)
+library(tidyr)
+chicagoMVT <- extract(chicagoMVT,Location,c("Latitude","Longitude"),'\\(([^,]+),([^)]+)\\)')
+chicagoMVT$Latitude <- round(as.numeric(chicagoMVT$Latitude),2)
+chicagoMVT$Longitude <- round(as.numeric(chicagoMVT$Longitude), 2)
+
+```
+
+    extract函数来自于tidyr包，用于“提取一列到多列”。这里用于分离Location列为“Latitude”和“Longitude”列，最后一个参数为正则表达式（Regular Expression or RegEx for short）。
+    
+* 获取芝加哥地图
+
+```{r,echo = TRUE,cache=TRUE}
+library(ggmap)
+chicago <- get_map (location = "chicago", zoom = 11)
+png(filename = "Chicago.png", width = 800, height = 600, units = "px")
+ggmap(chicago)#显示地图
+dev.off() 
+```
+
+    现在来创建个数据框包含所有盗窃事件的坐标。
+    
+```{r,echo=TRUE,cache=TRUE}
+locationCrimes <- as.data.frame(table(chicagoMVT$Longitude, chicagoMVT$Latitude))
+names(locationCrimes) <- c('long', 'lat', 'Frequency')
+locationCrimes$long <- as.numeric(as.character(locationCrimes$long))
+locationCrimes$lat <- as.numeric(as.character(locationCrimes$lat))
+locationCrimes <- subset(locationCrimes, Frequency > 0)
+```
+
+    如上面地图所示，坐标轴被命名为“long”和“lat”，因此我们也用了同样的名字转换我们的数据框。当我们创建数据框的时候，latitude和longitude被转换为因子类型，而因子类型数据转换为数值型，我们必须先把因子转换为字符串，然后再转换为数值型变量，否则将出现错误。最后，我们剔除了没有犯罪报告记录的所有点，如果你不这么做，结果生成的热点图将有许多热点跑到了水上，这是我们不希望的。
+    
+*现在来画热点地图
+
+```{r,echo=TRUE,cache=TRUE}
+png(filename = "Chicagomap.png", width = 800, height = 600, units = "px")
+ggmap(chicago) +
+        geom_tile(data = locationCrimes, aes(x = long , y = lat, alpha = Frequency), fill = "red") +
+        theme(axis.title.y = element_blank(), axis.title.x = element_blank())
+dev.off()
+#alpha 参数调整透明度
+```
+
+    以上热点地图为我们提供了一个很好的可视化思路，哪个地方盗窃高发，应该尽量避免前往；也为警方预防犯罪，提前防范提供了便利。关于这个话题，麻省理工学院一篇文章可以提供参考。 <https://www.technologyreview.com/s/428354/la-cops-embrace-crime-predicting-algorithm/>

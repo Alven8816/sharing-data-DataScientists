@@ -1,0 +1,126 @@
+---
+title: "[数据处理]提高R运算效率的方法总结"
+author: "余文华"
+date: "2016年3月13日"
+output: html_document
+---
+
+    R在大文本处理，内存管理和平行计算早为人所诟病。R作为一种单线程运算，确实在处理“大数据”方面有或多或少的缺陷，但是随着计算机内存容量的不断提升以及R本身对并行计算等算法的进步，R已经完全能处理GB级数据。
+    处理大规范数据时，可从以下3个方面来考虑提高R运算效率：
+    
+* 提高程序运行效率
+
+* 数据存储在外部管理
+
+* 使用大型数据专门统计包或考虑并行运算
+
+    下面让我们来总结下提高R运算效率的方法。当然这只是个人观点，欢迎各位大侠前来拍砖。
+    
+## 提高程序运行效率
+
+###1. 提前清理内存
+
+    由于R会把所有对象读取存入虚拟内存中，因此可提前清理不必要内存，包括使用rm(list = ls())清理不用对象，gc()函数清理内存等。
+
+###2. 用read.table()读入数据时，设定选择项：
+
+    1) colClasses 提前设定变量类型
+    2) stringAsFactors = FALSE 不自动把字符型转化为因子变量
+    3) comment.char = "" 关闭注释
+    4) nrow =  设定可读取的最大行数，可与skip结合使用，分批导入
+    5) multi.line = FALSE 
+    6) 字符型数据慢于数值型，尽量数值操作
+    除以上操作之外，也可以预先规定输出结果类型等方式，提高读取速度。
+
+###3. 尽量向量化运算或矩阵运算，避免loops操作
+
+    向量化运算可以说是R的精华之处，但实际能把它用好的人却凤毛麟角，包括小编我在fighting当中。几乎所有的for运算都可以修改为向量化实现。推荐大家看看不周山的博客“向量化与并行计算”<http://www.wentrue.net/blog/?p=945>。
+    
+####所谓向量化：
+
+    wikipedia中的定义是：Vectorization is the more limited process of converting a computer program from a scalar implementation, which processes a single pair of operands at a time, to a vector implementation which processes one operation on multiple pairs of operands at once 。
+    向量化计算是一种特殊的并行计算的方式，相比于一般程序在同一时间只执行一个操作的方式，它可以在同一时间执行多次操作，通常是对不同的数据执行同样的一个或一批指令，或者说把指令应用于一个数组/向量。
+    
+####下面有几个具体的实现方式：
+
+    1)尽量用ifelse()函数代替if循环
+    2)运用apply函数族代替loops操作
+    3)把“检查条件”放在循环外，只在条件为真时执行loops
+    
+###4. 运用compiler包cmpfun()函数把R代码编译为字节码操作
+
+    compiler包是系统核心包之一，并不需要专门下载安装,它将函数、文件、包编译成字节码文件可以大大提高运行速度，这是系统性能优化的重要方法之一，用到的函数非常简单，感兴趣的可以help试试。
+    
+###5. 运用Rcpp包，实现用C++分配内存或计算
+
+    用C语言编辑函数，实现R与C语言的连接，用C++分配内存或计算，感觉是不是很nice。不过前提是得懂C++哦！
+    以上5点是提高程序运行速度的一点小总结，再推荐大家学习下datascience+中由 Selva Prabhakaran 写的Strategies to Speedup R Code 课程，比较了11种提高R代码速度的方法，引用其中2张图片来直观看看吧.
+
+##把数据存储在外部
+
+    为了避免内存的消耗，特别是管理大型数据，还是把数据存储在硬盘中吧！下面总结了4种把数据存储在外部进行管理的方法，供大家参考：
+    
+###1)运用sqldf包，把数据读入sqlite或mySQL中
+###2)通过RODBC实现R与数据库的连接
+###3)运用ff包,把硬盘映射到内存，实现大内存处理
+###4)bigmemory包，支持矩阵内存共享或内存映射
+
+    当然这里面涉及比较多的参数和内容，其实选择1~2个适合自己的就够啦。
+    
+##并行运算
+
+    提到并行运算是不是感觉“高大上”，其实R在开发上已经把parallel内嵌到系统核心包中，一定程度上弥补了R并行运算的不足。
+  
+###1. parallel包
+
+    以下内容参考“炼数成金”http://www.dataguru.cn/article-1726-1.html
+    
+> 并行化方式可以使用如下方式构建：
+    通过system(“Rscript”)或类似方式，原理即在同一台或类似的机器上开启一个完全相同的R安装程序，而后在主、副进程间通过sockets通讯。这种方式在所有的R平台上都可以使用，snow包就实现了这种方式。
+
+> 通过forking。Fork是可移植操作系统（POSIX operating system）上的概念，这种方式适用于除Windows以外的所有平台。它的做法是创建一个新的完全拷贝主进程的副进程，包括workspace以及其他状态（如随机数流）。这种拷贝方式在内存页面发生变化前是共享内存的，因此速度很快。但这种方式也有缺点，它共享了整个进程，甚至包括GUI元素。这可能会导致一些bug。multicore包则实现了这种方式。
+
+> parallel包被作为核心包引入R，这个包主要建立在 multicore 和 snow 包的工作基础之上，包含了这两个包大部分功能函数，以及集成了随机数发生器。
+
+    parallel包运用于多核单机环境，将数据分割计算，整合结果，类似于lapply()函数，一般以parLapply(cl,x,FUN)形式，cl为使用计算机cpu个数。
+    
+* 注意：
+
+> 首先要先用detectCores函数确定系统核心数目，对于Window系统下的Intel I5或I7 处理器，一般使用detectCores(logical = F)来获得实际的物理核心数量。
+
+> 由于这个函数使用的是调用Rscript的方式对象被多次复制，因此内存会吃的很厉害，在大数据条件就要小心使用。
+
+###2.foreach包
+
+    以下内容参考R blogs/lang：用Parallel和foreach包玩转并行计算 <http://www.r-bloggers.com/lang/chinese/1131>
+    
+> foreach包是revolutionanalytics公司贡献给R开源社区的一个包。它能使R中的并行计算更为方便。与sapply函数类似，foreach函数中的第一个参数是输入参数，%do%后面的对象表示运算函数，而.combine则表示运算结果的整合方式。 下面的例子即是用foreach来完成前面的同一个任务。如果要启用并行，则需要加载doParallel包，并将%do%改为%dopar%。这样一行代码就能方便的完成并行计算了。
+    
+###3. plyr包
+
+    plyr包是著名的Hadley Wickham 开发的R包之一 ，其基本思想： Split- Apply-Combine 即： 把一个大问题拆分(split)成可以操 作的小 问题，独立地对每个小问题进行处理(apply),再把所有小问题处理后的结果组合起来(combine)。因此plyr包一开始就具有并行计算的灵魂。所有尽可能使用plyr包的**ply()函数族也可以提高R运算效率哦！
+    
+    以上只是我个人的一点总结，有不周或错误之处，敬请见谅并批评改正。
+    
+* 参考资料：
+
+> 不周山的博客“向量化与并行计算”<http://www.wentrue.net/blog/?p=945>
+
+> datascience+中由 Selva Prabhakaran 写的Strategies to Speedup R Code 课程
+
+> 炼数成金”http://www.dataguru.cn/article-1726-1.html
+
+> R blogs/lang：用Parallel和foreach包玩转并行计算 <http://www.r-bloggers.com/lang/chinese/1131>
+
+> 统计之都 Rcpp简明入门 <http://cos.name/2013/12/rcpp-introduction/>
+
+> 炼数成金 “大规模数据读入”
+
+> LOADING BIG (ISH) DATA INTO R <http://www.cerebralmastication.com/2009/11/loading-big-data-into-r/>
+
+> R scan 说明文档等
+   
+   
+
+
+    

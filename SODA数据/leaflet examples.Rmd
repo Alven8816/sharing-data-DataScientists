@@ -1,0 +1,118 @@
+---
+title: '[Visualizing Data] 运用Leaflet包构建交互型地图'
+author: "余文华"
+date: "2016年3月6日"
+output: html_document
+---
+
+    Leaflet包是JavaScript库中构建交互型地图的一种包，但RStudio让我们成功的在R中得以实现。同时Leaflet包也能很好的兼容到Shiny应用和R Markdown文件中。
+    我将从以下几个步骤来展示运用Leaflet交互地图：
+    
+*读取地址数据
+
+*运用百度地图API进行地址解析
+
+*运用网络爬虫Rcurl包及XML包进行地址坐标抓取
+
+*运用leaflet包绘制交互地图
+
+*对事故地图进行分类交互式显示
+
+------
+
+##数据来源
+
+    我们的数据来源于2015上海开放数据创新大赛(SODA)提供的开放道路事故数据，数据事项具体包括“事故ID、事故类型、事故地点、事故时间”。
+
+###读取数据并进行数据转换
+```{r}
+datas <- read.csv(file = "accident.txt",header = TRUE,stringsAsFactors = FALSE,encoding = "UTF-8")
+
+datas$address <- gsub(",(.*)",'',datas$SGDD)
+datas$time <- gsub("(.*),",'',datas$SGDD)
+datas <- datas[,c(1,3,6,7)]
+datas$DMSM1 <- factor(datas$DMSM1)
+write.csv(datas,"datas.csv")
+```
+
+##获取地址经纬度
+
+* 运用百度地图API进行地址解析。
+
+    地址解析，是用户输入一个详细的地址，例如“北京市中关村南大街27号中央民族大学”，那么地址解析接口，会返回一个经纬度Point。
+
+    获取地址解析，需要你首先在百度地图开发平台“申请密钥”，运用geocoder进行解析(里面有说明就不细说啦)。注意参数：“output”产出格式,本文为XML格式，“ak”为你从百度申请到的密钥，“address”就是需要查询的地址了。
+
+* 运用网络爬虫Rcurl包及XML包进行地理坐标抓取
+
+```{r}
+library(RCurl)
+library(XML)
+a <-NULL
+address <- NULL
+doc <- NULL
+lat <- NULL
+lng <- NULL
+for(i in 1:nrow(datas)){
+        a[i] <- paste0("http://api.map.baidu.com/geocoder/v2/?address=","上海市",datas$address[i],"&output=XML&ak=6MRdtm6SQ7BzAqEtlvVFAWIB&callback=showLocation")
+        address[i] <- getURL(a[i],.encoding="utf-8")
+        doc <- htmlTreeParse(address,useInternal = TRUE)
+#搜索地理坐标
+        lat <- xpathSApply(doc,"//lat",xmlValue)
+        lng <- xpathSApply(doc,"//lng",xmlValue)
+}
+datas$lat <-lat
+datas$lng <-lng
+head(datas)
+```
+
+
+##绘制地图
+
+1. 运用leaflet()函数创建地图工具；
+
+2. 运用addTiles()及addMarkers()增加地图图层；
+
+3. 打印地图
+
+```{r}
+library(leaflet)
+library(magrittr)
+
+SHmap <- leaflet() %>% 
+  addTiles() %>% 
+  setView(121.5064701061, 31.245341811635, zoom = 14) %>% 
+  addMarkers(121.5064701061, 31.245341811635, popup = '东方明珠')  %>% 
+  addCircleMarkers(121.5064701061, 31.245341811635, popup = 'accident Area ', radius = 5, color = 'red')
+SHmap
+
+```
+
+    首先加载leaflet包和magrittr包，创建地图工具leaflet(),运用addTiles()加入地图，默认使用开发街区地图形式。当然也可以选择其他地图形式，具体可参见 https://rstudio.github.io/leaflet/basemaps.html "Leaflet for R"。
+    然后我们可以运行setView()函数设置我们期望的地图中心点的经纬度，运用zoom参数设置地图范围(数值越小，范围越大)；
+    最后运用addMarkers()增加地图标记,popup参数设置标记的文字。当你点击蓝色标记的时候，会显示提示框“东方明珠”。也可以用addCircleMarkers()函数修改为圆形标记。
+  
+##事故发生地交互式地图分布  
+    
+```{r}
+SHmap %>% 
+  addTiles() %>% 
+  setView(121.5064701061, 31.245341811635, zoom = 11) %>% 
+  addMarkers(data = datas, lng = ~ lng, lat = ~ lat, popup = datas$DMSM1)
+
+```
+
+##事故分类交互显示
+
+    这些交通事故事件密集显示，显然不是我们需要的，下面用 clusterOptions()函数来集合这些事件，把相同类型事件聚集在一起显示：
+    
+```{r}
+SHmap %>%
+  addTiles() %>% 
+  setView(121.5064701061, 31.245341811635, zoom = 11) %>% 
+  addCircleMarkers(data = datas, lng = ~ lng, lat = ~ lat, radius = 5, 
+                   color = ~ ifelse(datas$DMSM1 == '死亡事件', 'red', 'blue'),
+                   clusterOptions = markerClusterOptions())
+```
+
+    图中每个圆圈的数值代表事故在一个区域发生的总数，事故发生越多，用红色圈显示，事故越少用绿色显示，当我们点击圆圈时，地图会自动转换到相应地区范围，并分裂为更小的事件合计。蓝色点表示非死亡事件，红色点表示死亡事件。

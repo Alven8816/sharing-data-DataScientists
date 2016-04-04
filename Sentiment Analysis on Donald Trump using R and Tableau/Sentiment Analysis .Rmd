@@ -1,0 +1,240 @@
+---
+title: "运用R和Tableau对美国总统候选人Donald Trump进行情绪分析"
+author: "余文华"
+date: "2016年3月27日"
+output: html_document
+---
+
+#背景及说明
+
+    最近美国总统候选人Donald Trump 已经算是美国 “最网红”了，特别是他的挑衅言论声称暂时禁止穆斯林进入美国，此言论一出群众哗然，进而受到来自各方的批评和指责。
+    情绪分析是许多社交媒体分析者常用的分析方法，它被用来评估我们对一个特殊问题的态度是积极还是消极。文章作者整合R(多个R包)和Tableau(可视化工具)，运用社交媒体分析、机器学习、 预测模型等进行文本挖掘。
+    本文中，作者将通过R对tweets进行挖掘，并进行情感分析，同时运用Tableau可视化获得的结果。主要包括：
+    1.微博的时空分布
+    2.主要微博的城市和州的分布
+    3.对微博情绪分析进行地图展示
+    这些将更直观展示大众对Donald Trump言论的态度是积极还 是消极。
+    
+载入所需的R包：
+```{r}
+library(twitteR)
+library(ROAuth)
+require(RCurl)
+library(stringr)
+library(tm)
+library(ggmap)
+library(dplyr)
+library(plyr)
+library(tm)
+library(wordcloud)
+```
+
+#获得Twitter授权
+
+```{r}
+key="hidden"
+secret="hidden"
+setwd("/text_mining_and_web_scraping")
+download.file(url="http://curl.haxx.se/ca/cacert.pem",destfile = "cacert.pm",method="auto")
+authenticate <- OAuthFactory$new(consumerKey=key,
+                                 consumerSecret=secret,
+                                 requestURL="https://api.twitter.com/oauth/request_token",
+                                 accessURL="https://api.twitter.com/oauth/access_token",
+                                 authURL="https://api.twitter.com/oauth/authorize")
+setup_twitter_oauth(key, secret)
+```
+
+#获取30个美国城市的tweets样本
+
+    我们抓取了最近的30个美国城市的tweets,每个城市2000条tweets,同时我们也需要每个城市的经纬度坐标。
+    
+```{r}
+N=2000  # tweets to request from each query
+S=200  # radius in miles
+lats=c(38.9,40.7,37.8,39,37.4,28,30,42.4,48,36,32.3,33.5,34.7,33.8,37.2,41.2,46.8,
+       46.6,37.2,43,42.7,40.8,36.2,38.6,35.8,40.3,43.6,40.8,44.9,44.9)
+
+lons=c(-77,-74,-122,-105.5,-122,-82.5,-98,-71,-122,-115,-86.3,-112,-92.3,-84.4,-93.3,
+       -104.8,-100.8,-112, -93.3,-89,-84.5,-111.8,-86.8,-92.2,-78.6,-76.8,-116.2,-98.7,-123,-93)
+
+#cities=DC,New York,San Fransisco,Colorado,Mountainview,Tampa,Austin,Boston,
+#       Seatle,Vegas,Montgomery,Phoenix,Little Rock,Atlanta,Springfield,
+#       Cheyenne,Bisruk,Helena,Springfield,Madison,Lansing,Salt Lake City,Nashville
+#       Jefferson City,Raleigh,Harrisburg,Boise,Lincoln,Salem,St. Paul
+
+donald=do.call(rbind,lapply(1:length(lats), function(i) searchTwitter('Donald+Trump',
+              lang="en",n=N,resultType="recent",
+              geocode=paste(lats[i],lons[i],paste0(S,"mi"),sep=","))))
+```
+    
+    我们获得每个tweets的经纬度,tweets内容,转发tweets的次数,是否关注及被推送的时间等指标。
+
+```{r}
+donaldlat=sapply(donald, function(x) as.numeric(x$getLatitude()))
+donaldlat=sapply(donaldlat, function(z) ifelse(length(z)==0,NA,z))  
+
+donaldlon=sapply(donald, function(x) as.numeric(x$getLongitude()))
+donaldlon=sapply(donaldlon, function(z) ifelse(length(z)==0,NA,z))  
+
+donalddate=lapply(donald, function(x) x$getCreated())
+donalddate=sapply(donalddate,function(x) strftime(x, format="%Y-%m-%d %H:%M:%S",tz = "UTC"))
+
+donaldtext=sapply(donald, function(x) x$getText())
+donaldtext=unlist(donaldtext)
+
+isretweet=sapply(donald, function(x) x$getIsRetweet())
+retweeted=sapply(donald, function(x) x$getRetweeted())
+retweetcount=sapply(donald, function(x) x$getRetweetCount())
+
+favoritecount=sapply(donald, function(x) x$getFavoriteCount())
+favorited=sapply(donald, function(x) x$getFavorited())
+
+data=as.data.frame(cbind(tweet=donaldtext,date=donalddate,lat=donaldlat,lon=donaldlon,
+                           isretweet=isretweet,retweeted=retweeted, retweetcount=retweetcount,favoritecount=favoritecount,favorited=favorited))
+```
+
+    首先让我们创建一个tweets的word cloud，帮助我们可视化tweets的最常见单词，对抓取的tweets有个直观的感觉。
+```{r}
+# Create corpus
+corpus=Corpus(VectorSource(data$tweet))
+
+# Convert to lower-case
+corpus=tm_map(corpus,tolower)
+
+# Remove stopwords
+corpus=tm_map(corpus,function(x) removeWords(x,stopwords()))
+
+# convert corpus to a Plain Text Document
+corpus=tm_map(corpus,PlainTextDocument)
+
+col=brewer.pal(6,"Dark2")
+wordcloud(corpus, min.freq=25, scale=c(5,2),rot.per = 0.25,
+          random.color=T, max.word=45, random.order=F,colors=col)
+```
+
+    我们能看到word cloud 中最常见 的是“muslim” ,“muslim” ，“ban”,这暗示我们当前最火的关于Donald Trump的 tweets是 “暂时禁止穆斯林进入美国”。
+    下图运用Tableau，展示了抓取tweets数量的时间序列图,我们可以改变时间单位来选择展示的时间标尺。随时间推移发布的tweets数量能帮助我们感知每个活动。
+    
+#获取tweets地址信息
+    
+    由于有许多tweets并没有经纬度信息，为了显示微博的地理信息，我们删除了缺失值，来展示各州、市及邮政编码的分布特点。
+    
+```{r}
+data=filter(data, !is.na(lat),!is.na(lons))
+lonlat=select(data,lons,lat)
+```
+
+    使用google的地图API获得每个博客的全部地址信息。ggmaps包通过微博经纬度能获得从街区、城市等信息。但由于google地图API每天最多只能访问2500个查询，尽管作者运用2台机器对经纬度进行逆解析，但不幸的是作者并没有抓取全部的博客地址。所有下面的可视化，作者只展示了能够逆地址解析抓取的博客数据。
+    
+```{r}
+result <- do.call(rbind, lapply(1:nrow(lonlat),
+                     function(i) revgeocode(as.numeric(lonlat[i,1:2]))))
+result[1:5,]
+```
+    我们能看到详细的发布博客的地址信息。我们再运用正则表达式和字符操作来截取city、zip code及state信息。
+```{r}
+data2=lapply(result,  function(x) unlist(strsplit(x,",")))
+address=sapply(data2,function(x) paste(x[1:3],collapse=''))
+city=sapply(data2,function(x) x[2])
+stzip=sapply(data2,function(x) x[3])
+zipcode = as.numeric(str_extract(stzip,"[0-9]{5}"))   
+state=str_extract(stzip,"[:alpha:]{2}")
+data2=as.data.frame(list(address=address,city=city,zipcode=zipcode,state=state))
+#合并数据集
+data=cbind(data,data2)
+``` 
+    对文本进行清洗：
+```{r}
+tweet=data$tweet
+tweet_list=lapply(tweet, function(x) iconv(x, "latin1", "ASCII", sub=""))
+tweet_list=lapply(tweet_list, function(x) gsub("htt.*",' ',x))
+tweet=unlist(tweet_list)
+data$tweet=tweet
+```
+
+    下面我们将运用情绪分析字典(一系列psitive和negative情绪词)，从下面网址可以下载：
+    
+    <https://www.cs.uic.edu/~liub/FBS/sentiment-analysis.html#lexicon>
+    
+```{r}
+positives= readLines("positive-words.txt")
+negatives = readLines("negative-words.txt")
+```
+
+    首先，让我们通过一个封装函数计算“情绪得分”：
+```{r}
+sentiment_scores = function(tweets, positive_words, negative_words, .progress='none'){
+  scores = laply(tweets,
+                 function(tweet, positive_words, negative_words){
+                 tweet = gsub("[[:punct:]]", "", tweet)    # remove punctuation
+                 tweet = gsub("[[:cntrl:]]", "", tweet)   # remove control characters
+                 tweet = gsub('\\d+', '', tweet)          # remove digits
+                
+                 # Let's have error handling function when trying tolower
+                 tryTolower = function(x){
+                     # create missing value
+                     y = NA
+                     # tryCatch error
+                     try_error = tryCatch(tolower(x), error=function(e) e)
+                     # if not an error
+                     if (!inherits(try_error, "error"))
+                       y = tolower(x)
+                     # result
+                     return(y)
+                   }
+                   # use tryTolower with sapply
+                   tweet = sapply(tweet, tryTolower)
+                   # split sentence into words with str_split function from stringr package
+                   word_list = str_split(tweet, "\\s+")
+                   words = unlist(word_list)
+                   # compare words to the dictionaries of positive & negative terms
+                   positive_matches = match(words, positive_words)
+                   negative_matches = match(words, negative_words)
+                   # get the position of the matched term or NA
+                   # we just want a TRUE/FALSE
+                   positive_matches = !is.na(positive_matches)
+                   negative_matches = !is.na(negative_matches)
+                   # final score
+                   score = sum(positive_matches) - sum(negative_matches)
+                   return(score)
+                 }, positive_matches, negative_matches, .progress=.progress )
+  return(scores)
+}
+
+score = sentiment_scores(tweet, positives, negatives, .progress='text')
+data$score=score
+```
+    
+    用直方图对得分进行绘图：
+    
+    我们可以看到情绪分析略偏积极，使用Tableau，我们将看到情绪得分的空间分布：
+    
+#保存数据到csv文件并导入Tableau中
+
+    下面地图展示了地址逆解析的微博分布。圈圈大小表示每个微博被关注的比例，通过交互式地图，我们能点击每个圆圈，来读取微博，获取其地址、时间等信息。
+    相类似，下图是微博被转发的数量交互式地图。
+    以下是邮编、城市、各州的微博数量分布的交互式图形。通过使用滑动条来改变展示信息的数量，更好的可视化微博数据。
+    
+#tweets的情绪分析
+
+    情绪分析以及被广泛的使用，例如公司会调查客户对公司产品的喜好，以及顾客不满意的问题所在。当公司推出新产品，它是否被积极接受？顾客对产品的情绪时空分布如何？等等，本文是评价了对Donald Trump的微博情绪。 
+    下图是被微博地址逆解析的情绪得分按州分布地图，我们可以看到微博具有高积极情绪的主要在纽约、北卡罗来纳州及得克萨斯州。
+    
+#总结
+
+    本文展示了如何通过R及Tableau进行文本挖掘、情绪分析及可视化。使用这些工具能得到我们问题的答案。
+    作者使用了最近包含Donald Trump的微博数据样本，但由于没有把抓取的微博通过google地图API全部逆解析，只使用了大约6000条微博数据。平均的情绪得分稍微大于零，而有些州有强烈的积极情绪。但是统计上来说，为获得更稳健的结论，挖掘的样本大小是很重要的。
+    情绪分析的准确性主要依靠微博内容在情绪字典的“包含度”，此外由于微博也包含俚语、行话及口头语等，而这些并未包含在情绪字典中，因此情绪分析需要谨慎评价。
+    
+#后记：
+
+    文本挖掘、情绪分析，特别是对中文的文本挖掘，一直是学界及工业界比较难的课题，搜索了很多资料都没找到理想的中文情绪词典库。Fisseha Berhane的这篇文章，本人觉得价值点包括：
+    
+1. 情绪分析及其适用范围
+2. twitteR包的使用及如何获得Twitter授权。
+3. tm包及wordCould包的使用
+4. stringR包的使用及文本挖掘中主要正则表达式的运用
+5. 情绪字典的获取及情绪得分函数的使用
+6. Tableau可视化工具的强大
+
+    

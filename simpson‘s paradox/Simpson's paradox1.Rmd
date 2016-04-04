@@ -1,0 +1,73 @@
+---
+title: "Yule-Simpson’s Paradox：introduction and simulation"
+author: "余文华"
+date: "2016年2月28日"
+output: html_document
+---
+## 辛普森悖论 Simpson's paradox
+
+    辛普森悖论也叫Yule–Simpson 效应，是在概率论或统计学中的一个悖论。它指数据在不同分组呈现一种结论，但当这些分组结合时却表现出与分组不同甚至相反的结论的一种悖论。
+    
+>Simpson's paradox, or the Yule–Simpson effect, is a paradox in probability and statistics, in which a trend appears in different groups of data but disappears or reverses when these groups are combined. It is sometimes given the impersonal title reversal paradox or amalgamation paradox.<https://en.wikipedia.org/wiki/Simpson%27s_paradox>.
+
+有一个很有名的例子，Table 1 是一个数值的例子，取自 Pearl (2000)。
+
+![example](http://cos.name/wp-content/uploads/2012/03/simpson.png)
+
+    Table 1 中，第一个表是整个人群的数据：接受处理和对照的人都是 40 人，处理有较高的存活率，因此处理对整个人群有“正作用”。第二个表和第三个表是将整个人群用性别分层得到的，因为第一个表的四个格子数，分别是下面两个表对应格子数的和：
+    20=18+2,20=12+8,16=7+9,24=3+21.
+    20=18+2,20=12+8,16=7+9,24=3+21.
+    奇怪的是，处理对男性有“负作用”，对女性也有“负作用”。一个处理对男性和女性都有“负作用”，但是他对整个人群却有“正作用”：悖论产生了！
+    在我们的模型分析中这种悖论经常产生，下面我们再通过模拟一个具体的例子，来看看为什么会出现悖论，以及如何避免吧！
+    
+```{r,echo= TRUE}
+set.seed(1234)
+n <- 100; x2 <- 1:n; x1 <- 0.01 *x2 +runif(n,-.1,.1);y = -x1+x2 +rnorm(n,sd=  .01)
+
+summary(lm(y ~ x1 +x2))$coef
+summary(lm(y ~ x1))$coef
+```
+
+    我们看到剔除x2变量后，x1的回归系数发生了“质”的变化，不仅变得异常的大，而且与真实系数（-1）都相反。是不是也发生了“辛普森悖论”了呢！
+    来直观地看看x1与y之间的关系：
+    
+```{r,fig.height=5,fig.width=10}
+dat = data.frame(y = y, x1 = x1,x2 = x2,ey = resid(lm(y ~ x2)),ex1 = resid(lm(x1 ~ x2)))
+library(ggplot2)
+g = ggplot(dat, aes(y = y,x = x1, colour = x2))
+g = g + geom_point(colour = "grey50", size = 5)+ geom_smooth(method = lm,se = FALSE, colour = "black")+ geom_point(size = 4)
+g
+```
+
+     作x1与y的散点图，我们看到x1与y拟合了完美的“正向”直线，而这与真实的“-1”的“负向”系数存在悖论。同时x1、x2之间存在相关性，x2随x1的增大而增大（x2颜色有深变浅）。再仔细看看我们前面模拟的数据“x1 <- 0.01 *x2 +runif (n,-.1,.1)” ，发现我故意设置了x1与x2之间有0.01的相关性，但却导致了去掉x2 变量，拟合x 1 与y之间回归系数约100倍的差距(系数符号还相反)。
+     
+###下面再来深入看看，x2在中间起的作用
+
+    创建一个新的数据集，ey为回归模型y~x2的残差，即从y中去除x2的作用后的变异；同理ex1为回归模型x1~x2的残差，即从x1中去除x2的作用后的变异；下面来看看在剔除x2后，y与x1的残差散点图。
+
+```{r,fig.height=5,fig.width=10}
+dat = data.frame(y = y, x1 = x1,x2 = x2,ey = resid(lm(y ~ x2)),ex1 = resid(lm(x1 ~ x2)))
+g2 = ggplot(dat, aes(y = ey, x = ex1 ,color = x2))
+g2 = g2 + geom_point(colour = "grey50",size = 5)+ geom_smooth(method = lm,se = FALSE, color = "black")+ geom_point(size = 4)
+g2
+```
+
+    由残差散点图可以看出，y及x1分别在剔除x2的作用后，拟合了负向直线，斜率为-1，同时x2与x1及y均不存在相关性(x2的颜色随机出现)，也确实说明是剔除了x2的作用的。
+    好了，现在原因发现了，由于x2在x1与y之间存在的“干扰”作用，即我们常说的“混杂因素”导致了悖论的产生。这也提示我们在模型的变量纳入排除时，出现辛普森悖论，应该从变量间是否存在相关性或混杂因素的干扰。
+    
+##在R中的注意事项
+
+    在R做回归分析时，值得注意的是，当存在一个变量为模型中两个变量生成时，模型会自动识别，并生成结果以“NA”表示，而其他变量系数不发生任何改变。从下面这个例子大概更容易懂吧！
+    
+```{r}
+x3 <- x1+x2
+
+summary(lm(y ~ x1+x2+x3))
+
+```
+
+    我们再新增一个变量x3=x1+x2，再纳入x3进入回归模型。从结果可以看出，x3以NA为结果，同时x1、x2的结果不发生任何改变哦！
+    
+>学习来源：coursera, Regression Models: Multivariable Regression, Residuals, & Diagnostics 
+
+>因果推断简介之一：从 Yule-Simpson’s Paradox 讲起<http://cos.name/tag/辛普森悖论/>
