@@ -1,0 +1,190 @@
+PLAYER,PASS_TO,PASS
+"Rush, Brandon","Green, Draymond",158
+"Rush, Brandon","Curry, Stephen",153
+"Rush, Brandon","Clark, Ian",85
+"Rush, Brandon","Thompson, Klay",84
+"Rush, Brandon","Livingston, Shaun",77
+"Rush, Brandon","Speights, Marreese",42
+"Rush, Brandon","Iguodala, Andre",40
+"Rush, Brandon","Barbosa, Leandro",39
+"Rush, Brandon","Bogut, Andrew",35
+"Rush, Brandon","Barnes, Harrison",28
+"Rush, Brandon","Ezeli, Festus",15
+"Rush, Brandon","McAdoo, James Michael",8
+"Rush, Brandon","Varejao, Anderson",5
+"Rush, Brandon","Looney, Kevon",3
+"Speights, Marreese","Livingston, Shaun",217
+"Speights, Marreese","Iguodala, Andre",145
+"Speights, Marreese","Barbosa, Leandro",94
+"Speights, Marreese","Clark, Ian",76
+"Speights, Marreese","Curry, Stephen",68
+"Speights, Marreese","Green, Draymond",49
+"Speights, Marreese","Thompson, Klay",46
+"Speights, Marreese","Rush, Brandon",43
+"Speights, Marreese","Barnes, Harrison",40
+"Speights, Marreese","Ezeli, Festus",8
+"Speights, Marreese","McAdoo, James Michael",7
+"Speights, Marreese","Looney, Kevon",1
+"Speights, Marreese","Varejao, Anderson",1
+"Iguodala, Andre","Curry, Stephen",367
+"Iguodala, Andre","Green, Draymond",300
+"Iguodala, Andre","Livingston, Shaun",293
+"Iguodala, Andre","Thompson, Klay",163
+"Iguodala, Andre","Barnes, Harrison",161
+"Iguodala, Andre","Speights, Marreese",149
+"Iguodala, Andre","Barbosa, Leandro",146
+"Iguodala, Andre","Ezeli, Festus",90
+"Iguodala, Andre","Bogut, Andrew",90
+"Iguodala, Andre","Clark, Ian",59
+"Iguodala, Andre","Rush, Brandon",40
+"Iguodala, Andre","McAdoo, James Michael",24
+"Iguodala, Andre","Varejao, Anderson",14
+"Thompson, Klay","Green, Draymond",465
+"Thompson, Klay","Curry, Stephen",260
+"Thompson, Klay","Bogut, Andrew",184
+"Thompson, Klay","Livingston, Shaun",115
+"Thompson, Klay","Iguodala, Andre",111
+"Thompson, Klay","Barnes, Harrison",98
+"Thompson, Klay","Ezeli, Festus",56
+"Thompson, Klay","Speights, Marreese",49
+"Thompson, Klay","Rush, Brandon",41
+"Thompson, Klay","Clark, Ian",34
+"Thompson, Klay","Barbosa, Leandro",27
+"Thompson, Klay","McAdoo, James Michael",17
+"Thompson, Klay","Looney, Kevon",1
+"Thompson, Klay","Varejao, Anderson",2
+"Bogut, Andrew","Curry, Stephen",689
+"Bogut, Andrew","Green, Draymond",332
+"Bogut, Andrew","Thompson, Klay",244
+"Bogut, Andrew","Livingston, Shaun",109
+"Bogut, Andrew","Iguodala, Andre",97
+"Bogut, Andrew","Barnes, Harrison",83
+"Bogut, Andrew","Rush, Brandon",54
+"Bogut, Andrew","Clark, Ian",28
+"Bogut, Andrew","Barbosa, Leandro",23
+"Bogut, Andrew","Speights, Marreese",1
+"Varejao, Anderson","Curry, Stephen",27
+"Varejao, Anderson","Livingston, Shaun",14
+"Varejao, Anderson","Barbosa, Leandro",13
+"Varejao, Anderson","Green, Draymond",12
+"Varejao, Anderson","Iguodala, Andre",10
+"Varejao, Anderson","Barnes, Harrison",7
+"Varejao, Anderson","Clark, Ian",4
+"Varejao, Anderson","Thompson, Klay",3
+"Varejao, Anderson","Rush, Brandon",2
+"Varejao, Anderson","Speights, Marreese",1
+"Varejao, Anderson","Looney, Kevon",1
+"Barbosa, Leandro","Livingston, Shaun",151
+"Barbosa, Leandro","Iguodala, Andre",130
+"Barbosa, Leandro","Speights, Marreese",102
+"Barbosa, Leandro","Barnes, Harrison",73
+"Barbosa, Leandro","Curry, Stephen",60
+"Barbosa, Leandro","Green, Draymond",56
+"Barbosa, Leandro","Ezeli, Festus",43
+"Barbosa, Leandro","Clark, Ian",36
+"Barbosa, Leandro","Rush, Brandon",35
+"Barbosa, Leandro","Thompson, Klay",30
+"Barbosa, Leandro","Bogut, Andrew",15
+"Barbosa, Leandro","McAdoo, James Michael",10
+"Barbosa, Leandro","Varejao, Anderson",10
+"Barbosa, Leandro","Looney, Kevon",7
+"McAdoo, James Michael","Livingston, Shaun",71
+"McAdoo, James Michael","Clark, Ian",57
+"McAdoo, James Michael","Iguodala, Andre",40
+"McAdoo, James Michael","Barbosa, Leandro",19
+"McAdoo, James Michael","Rush, Brandon",17
+"McAdoo, James Michael","Thompson, Klay",17
+"McAdoo, James Michael","Curry, Stephen",13
+"McAdoo, James Michael","Green, Draymond",12
+"McAdoo, James Michael","Speights, Marreese",9
+"McAdoo, James Michael","Ezeli, Festus",3
+"McAdoo, James Michael","Barnes, Harrison",2
+"McAdoo, James Michael","Bogut, Andrew",1
+"Clark, Ian","Speights, Marreese",90
+"Clark, Ian","Green, Draymond",72
+"Clark, Ian","Rush, Brandon",68
+"Clark, Ian","Livingston, Shaun",64
+"Clark, Ian","Iguodala, Andre",60
+"Clark, Ian","Thompson, Klay",53
+"Clark, Ian","McAdoo, James Michael",44
+"Clark, Ian","Barnes, Harrison",43
+"Clark, Ian","Barbosa, Leandro",37
+"Clark, Ian","Ezeli, Festus",26
+"Clark, Ian","Curry, Stephen",21
+"Clark, Ian","Bogut, Andrew",14
+"Clark, Ian","Looney, Kevon",4
+"Clark, Ian","Varejao, Anderson",1
+"Green, Draymond","Curry, Stephen",1647
+"Green, Draymond","Thompson, Klay",656
+"Green, Draymond","Iguodala, Andre",354
+"Green, Draymond","Livingston, Shaun",329
+"Green, Draymond","Barnes, Harrison",211
+"Green, Draymond","Bogut, Andrew",164
+"Green, Draymond","Rush, Brandon",154
+"Green, Draymond","Clark, Ian",93
+"Green, Draymond","Barbosa, Leandro",84
+"Green, Draymond","Ezeli, Festus",81
+"Green, Draymond","Speights, Marreese",51
+"Green, Draymond","McAdoo, James Michael",8
+"Green, Draymond","Varejao, Anderson",9
+"Curry, Stephen","Green, Draymond",1140
+"Curry, Stephen","Thompson, Klay",634
+"Curry, Stephen","Bogut, Andrew",410
+"Curry, Stephen","Iguodala, Andre",304
+"Curry, Stephen","Barnes, Harrison",270
+"Curry, Stephen","Rush, Brandon",125
+"Curry, Stephen","Ezeli, Festus",124
+"Curry, Stephen","Livingston, Shaun",105
+"Curry, Stephen","Barbosa, Leandro",74
+"Curry, Stephen","Speights, Marreese",70
+"Curry, Stephen","Clark, Ian",22
+"Curry, Stephen","Varejao, Anderson",13
+"Curry, Stephen","McAdoo, James Michael",6
+"Curry, Stephen","Looney, Kevon",3
+"Ezeli, Festus","Curry, Stephen",219
+"Ezeli, Festus","Livingston, Shaun",158
+"Ezeli, Festus","Green, Draymond",89
+"Ezeli, Festus","Iguodala, Andre",83
+"Ezeli, Festus","Barbosa, Leandro",69
+"Ezeli, Festus","Thompson, Klay",49
+"Ezeli, Festus","Clark, Ian",44
+"Ezeli, Festus","Barnes, Harrison",24
+"Ezeli, Festus","Rush, Brandon",21
+"Ezeli, Festus","Speights, Marreese",6
+"Ezeli, Festus","McAdoo, James Michael",3
+"Livingston, Shaun","Iguodala, Andre",294
+"Livingston, Shaun","Green, Draymond",270
+"Livingston, Shaun","Barbosa, Leandro",236
+"Livingston, Shaun","Speights, Marreese",206
+"Livingston, Shaun","Barnes, Harrison",200
+"Livingston, Shaun","Thompson, Klay",163
+"Livingston, Shaun","Curry, Stephen",144
+"Livingston, Shaun","Ezeli, Festus",90
+"Livingston, Shaun","Bogut, Andrew",86
+"Livingston, Shaun","Clark, Ian",80
+"Livingston, Shaun","McAdoo, James Michael",53
+"Livingston, Shaun","Rush, Brandon",50
+"Livingston, Shaun","Varejao, Anderson",5
+"Livingston, Shaun","Looney, Kevon",1
+"Looney, Kevon","Clark, Ian",11
+"Looney, Kevon","Barbosa, Leandro",7
+"Looney, Kevon","Rush, Brandon",7
+"Looney, Kevon","Livingston, Shaun",4
+"Looney, Kevon","Thompson, Klay",3
+"Looney, Kevon","Curry, Stephen",2
+"Looney, Kevon","Varejao, Anderson",1
+"Looney, Kevon","Barnes, Harrison",1
+"Barnes, Harrison","Curry, Stephen",323
+"Barnes, Harrison","Livingston, Shaun",218
+"Barnes, Harrison","Green, Draymond",168
+"Barnes, Harrison","Iguodala, Andre",146
+"Barnes, Harrison","Thompson, Klay",131
+"Barnes, Harrison","Barbosa, Leandro",78
+"Barnes, Harrison","Clark, Ian",63
+"Barnes, Harrison","Bogut, Andrew",63
+"Barnes, Harrison","Speights, Marreese",50
+"Barnes, Harrison","Rush, Brandon",28
+"Barnes, Harrison","Ezeli, Festus",23
+"Barnes, Harrison","Varejao, Anderson",6
+"Barnes, Harrison","McAdoo, James Michael",2
+"Barnes, Harrison","Looney, Kevon",1

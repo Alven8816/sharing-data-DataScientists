@@ -1,0 +1,168 @@
+---
+title: "网页排名算法 (Pagerank Algorithm)分析金州勇士队员排名及传球路线"
+author: "余文华"
+date: "2016年4月10日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 文前摘要
+
+    通过本篇文章，你将学习到：
+    
+1. 网页排名算法 (Pagerank Algorithm)的简要概述
+
+2. 运用Pagerank算法实现NBA金州勇士队传球路线及球员的重要程度分析
+
+3. 通过R中的networkD3包实现可交互的D3制图
+
+    
+##Pagerank算法概述
+    
+    说起Pagerank算法，不得不提起谷歌搜索，可以说是pagerank成就了Google，也可以说Google成就了Pagerank算法。Pagerank是一种由 据网页之间相互的超链接计算的技术，以Google公司创办人拉里·佩奇（Larry Page）之姓来命名。
+    
+> PageRank 是基于「从许多优质的网页链接过来的网页，必定还是优质网页」的回归关系，来判定所有网页的重要性。
+
+    PageRank的计算基于以下两个基本假设：
+
+* 数量假设：如果一个页面节点接收到的其他网页指向的入链数量越多，那么这个页面越重要
+* 质量假设：指向页面A的入链质量不同，质量高的页面会通过链接向其他页面传递更多的权重。所以越是质量高的页面指向页面A，则页面A越重要。
+    
+> 计算公式：
+
+* PR(pi): pi页面的PageRank值
+* n: 所有页面的数量
+* pi: 不同的网页p1,p2,p3
+* M(i): pi链入网页的集合
+* L(j): pj链出网页的数量
+* d:阻尼系数, 任意时刻，用户到达某页面后并继续向后浏览的概率。
+* (1-d=0.15) :表示用户停止点击，随机跳到新URL的概率取值范围: 0 < d ≤ 1, Google设为0.85
+
+##实现NBA金州勇士队传球路线及球员的重要程度分析
+
+###读取数据
+
+    数据来源于YUKI KATOH的博客及其github，在其博客中说明了数据来源：
+
+> 调用API，从NBA.com中playerdashptpass 的端点并且将同队所有球员数据保存到本地的 JSON 文件中。数据来自 2015-16赛季的传球记录。
+
+    本文直接读取已经抓取数据（笔者尝试抓取并项通过rlist包把json清洗为理想的数据集，还尚未成功，只好先拿其结构化数据一试）。
+
+```{r}
+#金州勇士队员传球数据
+passes <- read.csv("passes.csv",header = TRUE,stringsAsFactors = TRUE)
+#金州勇士15个队员位置信息
+groups <- read.csv("groups.csv",header = TRUE,stringsAsFactors = FALSE)
+head(passes)
+head(groups)
+```
+   
+###Pagerank算法实现 
+
+1. 构造邻接表
+    
+    即列为15个队员名字(源数据)，行为15个队员接到传球队员的名字(目标数据)，构成15*15的矩阵。通过构建adjacencyMatrix函数实现。
+    
+```{r}
+passes$source2 <- as.numeric(as.factor(passes$PLAYER))
+passes$target2 <- as.numeric(as.factor(passes$PASS_TO))
+adjacencyMatrix<-function(pages){
+        n<-max(apply(pages[c("source2","target2")],2,max))
+        A <- matrix(0,n,n)
+        for(i in 1:nrow(pages)) A[pages[i,]$target2,pages[i,]$source2]<-pages[i,3]
+        A
+}
+A <- adjacencyMatrix(passes)
+A
+```
+
+###构建概率矩阵（转移矩阵）
+    
+    考虑阻尼系统的情况，把d设置为0.85，运用上面的公式，转换邻接表矩阵为概率矩阵。
+    
+```{r}
+dProbabilityMatrix<-function(G,d=0.85){
+        cs <- colSums(G)
+        cs[cs==0] <- 1
+        n <- nrow(G)
+        delta <- (1-d)/n
+        A <- matrix(delta,nrow(G),ncol(G))
+        for (i in 1:n) A[i,] <- A[i,] + d*G[i,]/cs
+        A
+}
+G <- dProbabilityMatrix(A)
+G
+```
+
+###递归计算矩阵特征值
+    计算矩阵特征值，并排序得出队员Pagerank值排序。
+
+```{r}
+eigenMatrix<-function(G,iter=100){
+  iter<-10
+  n<-nrow(G)
+  x <- rep(1,n)
+  for (i in 1:iter) x <- G %*% x
+  x/sum(x)
+}
+q<-eigenMatrix(G,100)
+q <- cbind(levels(passes$PLAYER),q)
+q <- q[order(q[,2],decreasing = TRUE),]
+size <- as.data.frame(q)
+names(size) <- c("name","pagerank")
+size$pagerank <- as.numeric(as.character(size$pagerank))
+size$name <- as.numeric(as.factor(size$name))
+q
+```
+
+##运用networkD3包实现可交互的D3制图
+    
+    其中颜色分别代表队员不同位置(前锋或后卫),圈圈大小代表pagerank值大小，连线次数(粗细)代表传球路线及传球次数。
+    
+```{r}
+library(networkD3)
+passes$source <- as.numeric(as.factor(passes$PLAYER))-1
+passes$target <- as.numeric(as.factor(passes$PASS_TO))-1
+passes$PASS <- passes$PASS/50
+
+groups$nodeid <- groups$name
+groups$name <- as.numeric(as.factor(groups$name))
+groups$group <- as.numeric(as.factor(groups$label))-1
+nodes <- merge(groups,size, by.x = "name",by.y = "name")
+nodes$pagerank <- nodes$pagerank*1000
+
+forceNetwork(Links = passes,
+             Nodes = nodes,
+             Source = "source",
+             fontFamily = "Arial",
+             colourScale = JS("d3.scale.category10()"),
+             Target = "target",
+             Value = "PASS",
+             NodeID = "nodeid",
+             Nodesize = "pagerank",
+             linkDistance = 350,
+             Group = "group", 
+             opacity = 0.8,
+             fontSize = 16,
+             zoom = TRUE,
+             opacityNoHover = TRUE)
+```
+
+
+##说明
+    
+    本文数据来源于YUKI KATOH的博客及其github，数据仅用于本人通过R实现PageranK算法的学习和演练，不用于任何商业宣传及其他用途，如有转载及其他用途请联系原作者本人。文章最后会给出数据出处及链接<https://github.com/yukiegosapporo/gsw_passing_network>。
+    
+###参考文章
+
+> YUKI KATOH 的博客 <http://opiateforthemass.es/articles/analyzing-golden-state-warriors-passing-network-using-graphframes-in-spark/> 及HarryZhu对其 中文翻译<https://segmentfault.com/a/1190000004816528#articleHeader8>
+
+> 张丹(Conan) PageRank算法R语言实现 <http://blog.fens.me/algorithm-pagerank-r/>
+
+> Google 的秘密 PageRank 彻底解说中文版 <http://www.t086.com/good/pagerank_cn.htm>
+
+> SCAN文档说明及networkD3包相关说明
+
