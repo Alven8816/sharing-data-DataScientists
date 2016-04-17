@@ -1,0 +1,87 @@
+---
+title: "运用rlist包处理JSON非结构化数据"
+author: "余文华"
+date: "2016年4月17日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 问题提出
+
+    相对于结构化数据（即行数据，存储在数据库里，可以用二维表结构来逻辑表达实现的数据）而言，不方便用数据库二维逻辑表来表现的数据即称为非结构化数据。一般而言，统计学更多的是处理结构化数据。可是随着大数据和云计算的发展，我们生活中大多数数据都为非结构化的，比如办公文档、文本、图片、标准通用标记语言下的子集XML、HTML、各类报表、图像和音频/视频信息等等。据IDC的一项调查报告中指出：企业中80%的数据都是非结构化数据，这些数据每年都按指数增长60%而平均只有1%-5%的数据是结构化的数据。
+    在实际的网络数据通讯中，类似DateFrame这样的结构化数据格式却并不是主流，真正主流的方式其实是JSON（JavaScript Object Notation），所以讨论如何处理非结构化数据就变得非常有意义了。加之，近年来 Redis、MongoDB、ELK等非结构化数据库的繁荣，MySQL 5.7之后也已经添加了对JSON格式的原生支持（之前可以用blob、longtext等格式存储），非结构化数据更是在数据处理中变得流行。
+    因此有必要通过R来实现非结构化数据的处理。DataFrame 是R中的结构化数据结构，List 是R中的非结构化数据。JSON、List、DataFrame三者之间的互相转化是数据科学中非常频繁的一类操作。本文将对上期遗留的“如何转换JSON数据为List，进而转化为DataFrame进行数据操作”这一问题进行补充。
+    
+##背景回顾
+
+    上期，我们通过网页排名算法 (Pagerank Algorithm)分析了金州勇士队员排名及传球路线。主要讲述了Pagerank算法概述，运用Pagerank算法实现NBA金州勇士队传球路线及球员的重要程度分析及通过R中的networkD3包实现可交互的D3制图。我们的数据源来自YUKI KATOH的博客及其github：YUKI KATOH通过调用API，从NBA.com中playerdashptpass 的端点并且将同队所有球员数据保存到本地的JSON文件中。
+    在上期我们是直接读取已经清洗好的结构化数据，这一期，我们就运用YUKI KATOH保存到本地的JSON文件，通过R的系列操作实现JSON数据的读取、转换，使其变成结构化的DataFrame。
+    
+##数据操作
+
+###非结构化数据可视化
+
+    首先通过通过几个语句来看看我们的JSON非结构化数据。
+    
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+library(jsonlite)
+devtools::install_github("hrbrmstr/jsonview")
+jsonview::json_tree_view(fromJSON("F:\\乐享数据DataScientists(data-sharing)\\sharing-data-DataScientists\\Pagerank Algorithm分析金州勇士队员排名及传球路线\\gsw_passing_network-master\\101106.json"))
+```
+
+###数据读取
+
+    我们首先看到保存本地的JSON文件如下图，共15个.json文件，文件名分别为金州勇士15名队员的队员ID。让我们通过jsonlite包的fromJSON函数来批量读取JSON数据。
+    通过dir()函数生成文件位置list，运用lapply函数批量读取JSON文件。
+    
+```{r}
+files <- "F:\\乐享数据DataScientists(data-sharing)\\sharing-data-DataScientists\\Pagerank Algorithm分析金州勇士队员排名及传球路线\\gsw_passing_network-master"
+files_list <- dir(files,pattern = "\\.json",full.names = TRUE)
+data_list <- lapply(files_list,jsonlite::fromJSON)
+str(data_list)
+```
+
+    jsonlite包是R实现JSON文件与DataFrame转换的非常好用的包，fromJSON函数是从JSON数据读入，toJSON函数是R对象转换为JSON文件。我们通过str(data_list)来看看list的结构。
+    
+    
+###数据选择和提取
+
+    我们把JSON读取后，数据为list类型，现在我们需要把list数据进行处理，转换为包含球员相互传球的结构化数据。
+    rlist包是任坤老师贡献到CRAN上的，任坤老师是一个多产的R Developer (pipeR、formattable作者) 。rlist借鉴了Python、Scala等语言中的MapReduce模型 ，rlist也 为list提供了map 、filter、reduce 、group、join、search、sort等高级数据操作。想要学习rlist，我们可以参考一下任坤老师的演讲：跳出数据框，拥抱非结构化数据和官方教程。
+    我们运用list.select函数来实现list映射到headers，提取“列名”。通过unlist()转为向量。
+    并映射list到rowSet，提取数据集（b）。现在我们的目标是把b数据集（list格式）转换为DataFrame，并实现数据合并。首先通过for循环转换list为DataFrame，保存为receive(我们只需要球员接到传球数据，receive为包含15个DataFrame的list类型)。然后通过list.rbind()实现list中数据框的合并，并产出DataFrame。
+    
+```{r}
+library(rlist)
+name_data <- unlist(list.select(data_list,resultSets$headers[[1]])[1])
+raw_data <- list.select(data_list,resultSets$rowSet)
+b <- sapply(raw_data,rbind)
+#receive数据集
+receive = list()
+for (i in 1:length(b)){
+        receive[[i]]= as.data.frame(b[[i]][2])
+        receive
+}
+receive = list.rbind(receive)
+names(receive) = name_data
+receive <- receive[,c(1,2,5,7,8,10)]
+head(receive)
+```
+
+    我们再为数据集列命名，提取所需要的列。最后得到数据框如下图，可以得到不同球员接到其他球员传球(PASS)结构化数据，即得到了我们需要的传球数据。其实，实现list数据处理的关键在于list.rbind()函数的正确使用。
+
+##参考资料
+
+> 跳出数据框，拥抱非结构化数据 任坤
+
+> rlist官方教程
+
+> 数据流编程教程：R语言与非结构化数据共舞 HarryZhu
+
+> YUKI KATOH 的博客 http://opiateforthemass.es/articles/analyzing-golden-state-warriors-passing-network-using-graphframes-in-spark/ 及HarryZhu对其 中文翻译https://segmentfault.com/a/1190000004816528#articleHeader8
+
+> SCAN中rlist说明文档等
+    
