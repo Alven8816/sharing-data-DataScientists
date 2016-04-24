@@ -1,0 +1,167 @@
+---
+title: "正则化及其R实现"
+author: "余文华"
+date: "2016年4月22日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##文前说明
+
+    本文是最近学习正则化的网络资源的总结，主要是总结和方便个人学习。
+    
+## 模型的变量选择
+
+    在变量选择方面有三种扩展的方法：
+
+1. 子集选择：这是传统的方法，包括逐步回归和最优子集法等，对可能的部分子集拟合线性模型，利用判别准则 （如AIC,BIC,Cp,调整R2 等）决定最优的模型。 
+
+2. 收缩方法（shrinkage method）：又称为正则化（regularization）。主要是岭回归（ridge regression）和lasso回归(least absolute shrinkage and selection operator),读音不是[‘l??so]而是[l??’su:]。通过对最小二乘估计加入罚约束，使某些系数的估计为0。 
+
+3. 维数缩减：主成分回归（PCR）和偏最小二乘回归（PLS）的方法。把p个预测变量投影到m维空间（m<p），利用投影得到的不相关的组合建立线性模型。
+  
+  我们这期主要来学习和总结下正则化方法。
+
+##正则化(regularization)
+
+    不同于最小二乘估计是最小化残差平方和（RSS）,正则化则是为RSS添加一个惩罚项（lasso是加入一个l1范数，岭回归是加入l2范数），使解释变量的系数加入到Cost Function后，对Cost Function进行最小化。
+    岭回归（ridge regression）和lasso回归本质上都是对过多的参数实施了惩罚。而两种方法的区别在于惩罚函数不同。但这种微小的区别却使LASSO有很多优良的特质（可以同时选择和缩减参数）。岭回归的一个缺点：在建模时，同时引入p个预测变量，罚约束项可以收缩这些预测变量的待估系数接近0,但并非恰好是0（除非lambda为无穷大）。这个缺点对于模型精度影响不大，但给模型的解释造成了困难，所以岭回归虽然减少了模型的复杂度，并没有真正解决变量选择的问题。这一缺点由lasso克服。
+    下面的公式就是在线性模型中两种方法所对应的目标函数： 
+    公式中的lambda是重要的设置参数，它控制了惩罚的严厉程度，如果设置得过大，那么最后的模型参数均将趋于0，形成拟合不足。如果设置得过小，又会形成拟合过度。所以lambda的取值一般需要通过交叉检验来确定。
+
+##R语言实现
+
+    glmnet包是关于Lasso and elastic-net regularized generalized linear models。 作者是Friedman, J., Hastie, T. and Tibshirani。这个包采用的算法是循环坐标下降算法（cyclical coordinate descent）： 对每一个参数在保持其它参数固定的情况下进行优化，循环，直到系数稳定为止。这个计算是在lambda的格点值上进行的。 关于这个算法见[2]。 关于glmnet包的细节可参考[1]。
+    
+###glmnet举例
+
+    我们使用mlbench包中的Sonar数据集，来模拟Logistic回归，通过60个声纳信号变量预测所采的岩石是否为矿石。先建立train集和test集，运用glmnet包实现：参数alpha=1为lasso回归，alpha=0为岭回归。
+
+####岭回归
+
+```{r, message=FALSE}
+library(glmnet)
+require(mlbench)
+data(Sonar)
+set.seed(123)
+train.index = sample(nrow(Sonar), 0.7 * nrow(Sonar))
+train.x = as.matrix(Sonar[train.index, 1:60]);
+train.y = Sonar[train.index, 61];
+test.x = as.matrix(Sonar[-train.index,1:60]);
+test.y = Sonar[-train.index, 61]
+r1 <- glmnet(train.x,train.y,family = "binomial",alpha = 0)
+plot(r1)
+r1.cv <- cv.glmnet(train.x,train.y,family = "binomial",alpha = 0,nfolds = 10)
+plot(r1.cv)
+```
+
+####Lasso回归
+
+```{r}
+r2 <- glmnet(train.x,train.y,family = "binomial",alpha = 1)
+plot(r2)
+r2.cv <- cv.glmnet(train.x,train.y,family = "binomial",alpha = 1,nfolds = 10)
+plot(r2.cv)
+```
+
+    cv.glmnet 函数利用交叉检验，分别用不同的lambda值来观察模型误差。上图横轴是lambda值的对数，纵轴是模型误差。从上面的图可以看到，最佳的lambda取值就是在红色曲线的最低点处,对应的变量个数为10，它右侧的另一条虚线是在其一倍SE内的更简洁的模型（变量个数为13）。
+ 
+    我们分别获取lambda.min及lambda.1se的值：
+    
+```{r}
+r2.cv$lambda.min
+r2.cv$lambda.1se
+```
+
+    根据获取的lambda.min及lambda.1se,获取变量个数及其对应的系数：
+    
+```{r}
+#lambda.1se 模型
+r2.1se <- glmnet(train.x,train.y, family = "binomial", alpha = 1, lambda = r2.cv$lambda.1se)
+r2.min_coef <- coef(r2.1se)
+r2.min_coef[which(r2.min_coef != 0)]
+rownames(r2.min_coef)[which(r2.min_coef != 0)]
+#lambda.min 模型
+r2.min <- glmnet(train.x,train.y, family = "binomial", alpha = 1, lambda = r2.cv$lambda.min)
+r2.min_coef <- coef(r2.min)
+r2.min_coef[which(r2.min_coef != 0)]
+rownames(r2.min_coef)[which(r2.min_coef != 0)]
+```   
+    
+####lambda的选取
+
+    lambda.min：value of lambda that gives minimum cvm.lambda.1se：largest value of lambda such that error is within 1 standard error of the minimum.网上的讨论推荐使用lambda.1se的比较多，这样可以得到更简洁的模型。.但是还有这样的说法：1se在低noise的时候才好用，高noise的时候，有一两个fold的error很大，cv curve就会增长很快，导致选的lambda太大。 
+    
+####模型评价
+
+```{r}
+lasso.pred <- predict(r2, s = r2.cv$lambda.1se, newx = test.x,type = "class")
+#模型正确率
+(length(which(lasso.pred==test.y)==TRUE))/length(test.y)*100
+```
+
+###岭回归和lasso的比较
+
+```{r}
+lasso.pred <- predict(r2, s = r2.cv$lambda.1se, newx = test.x,type = "class")
+ridge.pred <- predict(r1, s = r1.cv$lambda.1se, newx = test.x,type = "class")
+#正确率
+(length(which(lasso.pred==test.y)==TRUE))/length(test.y)*100
+(length(which(ridge.pred==test.y)==TRUE))/length(test.y)*100
+```
+
+    如果你的数据变异较大，那么在做LASSO之前最好进行数据标准化处理。LASSO的进一步扩展是和岭回归相结合，形成Elastic.Net方法。glmnet包也可以实施这种算法。glmnet算法需将分析数据转换为矩阵，这要求分析数据类型都为numeric类型，因此对于既有double类型也有factor类型的数据，需先将有factor类型转换为0-1哑变量类型。同时在glmne中，运用dfmax参数可控制特征选择的个数。
+    
+###材料补充  
+####对glmnet的一个封装，可以直接用来筛选变量
+
+    肖楠大侠通过SuperLearner::screen.glmnet对glmnet的一个封装，可以直接用来筛选变量。
+    
+```{r,message=FALSE}
+library(glmnet)
+ScreenLasso = function (Y, X, family, nlambda = 100, alpha = 1,
+                         minscreen = 2, nfolds = 10, ...) {
+  require(glmnet)
+  if (!is.matrix(X)) X = model.matrix(~-1 + ., X)
+  fitCV = cv.glmnet(x = X, y = Y, lambda = NULL, type.measure = "deviance",
+                    nfolds = nfolds, family = family, alpha = alpha,
+                    nlambda = nlambda, ...)
+  whichVariable = (as.numeric(coef(fitCV$glmnet.fit,
+                                   s = fitCV$lambda.min))[-1] != 0)
+  if (sum(whichVariable) < minscreen) {
+    warning("fewer than minscreen variables passed the glmnet screen,
+            increased lambda to allow minscreen variables")
+    sumCoef = apply(as.matrix(fitCV$glmnet.fit$beta), 2,
+                    function(x) sum((x != 0)))
+    newCut  = which.max(sumCoef >= minscreen)
+    whichVariable = as.matrix(fitCV$glmnet.fit$beta)[, newCut] != 0
+  }
+  return(whichVariable)
+}
+```
+
+####封装函数预测，自动选择变量
+
+```{r}
+require(mlbench)
+data(Sonar)
+Selected = ScreenLasso(Y = Sonar[, 61], X = Sonar[, -61], family = 'binomial',
+                       nlambda = 50, minscreen = 10, nfolds = 10)
+SonarSelected = Sonar[, Selected]
+```
+
+##参考资料
+> [1]Friedman,J.,Hastie,T.,Tibshirani.R.:Regularization Paths for Generalized Linear Models via Coordinate Descent.Journal of Statistical Software,Volume 33(2010), Issue 1.
+
+> [2]J. Friedman, T. Hastie, H. Hoe ing, and R. Tibshirani.:Pathwise coordinate optimization. Annals of Applied Statistics, 2(1):302-332, 2007. <http://www.stanford.edu/~hastie/Papers/pathwise.pdf>
+
+> 用glmnet包实施套索算法(LASSO) <http://www.tuicool.com/articles/Vna6J3>
+> 统计之都 <http://cos.name/cn/topic/105760/>;<http://cos.name/cn/topic/109084/>
+> 统计学习那些事 <http://cos.name/2011/12/stories-about-statistical-learning/>
+> 豆瓣 数据铺子：线性回归建模–变量选择和正则化<https://site.douban.com/182577/widget/notes/10567212/note/288551448/>
+> Coursera:machine learning,Andrew Ng <https://www.coursera.org/learn/machine-learning/home/welcome>
+> 机器学习之正则化（Regularization）<http://doc.okbase.net/jianxinzhou/archive/111322.html>
+
