@@ -1,0 +1,203 @@
+---
+title: "ggmap绘制区域地图"
+author: "余文华"
+date: "2016年5月1日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## ggmap绘制地图
+```{r}
+library(ggplot2)
+library(ggmap)
+library(XML)
+u <- "http://blog.csdn.net/svrsimon/article/details/8255051"
+tables <- readHTMLTable(u,stringsAsFactors = FALSE)
+raw <- tables[[1]]
+zh_posi <- raw[-1, ]
+colnames(zh_posi) = c("province", "city", "county", "lon", "lat")
+zh_posi[, 4:5] = apply(zh_posi[, 4:5], 2, as.numeric)
+save(zh_posi, file = "zh_posi.rda")
+
+tianjinlabel <- subset(zh_posi,province =="天津市")
+
+#绘制简单区域地图
+CNmap <- qmap("CN",zoom = 4,source= "google",maptype = "roadmap",
+              col = "bw", legend = "none")
+tianjinmap <- qmap("tianjin",zoom = "auto",source= "stamen",maptype = "terrain-background")
+tianjin_map <- get_map(location = tianjin[,4:5],source = "osm",zoom = "auto",maptype ="satellite")
+ggmap(tianjin_map)
+
+```
+
+#qipaotu
+```{r}
+# 生成一个随机测试的变量
+tianjin$value=runif(length(tianjin$lon),min=10,max=200)
+# 一个简单的地域气泡图
+CNmap <- qmap("tianjin",zoom=9,source="google",maptype="roadmap",
+              col="bw",legend="none")
+CNmap+geom_point(aes(x=lon,y=lat,size=value,col=factor(county),alpha=.9),data=tianjin)+
+  scale_colour_brewer(palette="Set1")+
+  theme(legend.position="none")
+```
+
+```{r}
+# 加载所需扩展包
+library(sp)
+library(ggplot2)
+library(gpclib)
+library(maptools)
+# 读取地理信息数据
+gadm <-  readRDS("CHN_adm1.rds")
+# 人均水资源量
+water <- c(1085,325,1473,3524,1079,2935,3989,2790,4147,358,2046,434
+,1652,2490,451,3362,1467,871,2145,182,1000,12278,448,377,
+182,1221,3135,152,4976,10000,5298)
+# 将数据转为数据框
+gpclibPermit()
+china.map <- fortify(gadm,region='ID_1')
+vals <- data.frame(id =unique(china.map$id),val=water)
+# 用ggplot命令绘图
+ggplot(vals, aes(map_id = id)) + 
+    geom_map(aes(fill = val), map =china.map) +
+    expand_limits(x = china.map$long, y = china.map$lat) +
+    scale_fill_continuous(low = 'red2',high ='yellowgreen',
+        guide = "colorbar") + 
+    xlab("") + ylab("")
+
+```
+
+#Global Administrative Areas & Boundaries without limits
+
+```{r}
+library(sp)
+CHN1 <-  readRDS("CHN_adm1.rds") 
+china.map <- fortify(CHN1)
+water <- c(1085,325,1473,3524,1079,2935,3989,2790,4147,358,2046,434
+,1652,2490,451,3362,1467,871,2145,182,1000,12278,448,377,
+182,1221,3135,152,4976,10000,5298)
+vals <- data.frame(id =unique(china.map$id),val=water)
+
+# 用ggplot命令绘图
+ggplot(vals, aes(map_id = id)) + 
+    geom_map(aes(fill = val), map =china.map) +
+    expand_limits(x = china.map$long, y = china.map$lat) +
+    scale_fill_continuous(low = 'red2',high ='yellowgreen',
+        guide = "colorbar") + 
+    xlab("") + ylab("")
+```
+
+##maptools方法
+```{r}
+library(maptools)
+library(ggplot2)
+china_map<-readShapePoly("bou2_4p.shp")
+plot(china_map)
+head(china_map@data)
+NAME <- as.character(na.omit(unique(china_map@data$NAME)))
+china_map <- fortify(china_map)
+ggplot(china_map,aes(x = long,y = lat,group = group))+
+        geom_polygon(fill = "beige")+
+        geom_path(color = "grey40")
+```
+
+```{r}
+plot(china_map,col = gray(924:0/924))
+
+```
+
+###获取省名称
+
+```{r}
+as.character(na.omit(unique(x@data$NAME)))
+```
+
+```{r}
+getColor=function(mapdata,provname,provcol,othercol)
+{
+	f=function(x,y) ifelse(x %in% y,which(y==x),0);
+	colIndex=sapply(mapdata@data$NAME,f,provname);
+	fg=c(othercol,provcol)[colIndex+1];
+	return(fg);
+}
+
+provname=c("北京市","天津市","上海市","重庆市");
+provcol=c("red","green","yellow","purple");
+plot(china_map,col=getColor(china_map,provname,provcol,"white"))
+
+provname=c("北京市","天津市","河北省","山西省","内蒙古自治区",
+		"辽宁省","吉林省","黑龙江省","上海市","江苏省",
+		"浙江省","安徽省","福建省","江西省","山东省",
+		"河南省","湖北省","湖南省","广东省",
+		"广西壮族自治区","海南省","重庆市","四川省","贵州省",
+		"云南省","西藏自治区","陕西省","甘肃省","青海省",
+		"宁夏回族自治区","新疆维吾尔自治区","台湾省",
+		"香港特别行政区");
+pop=c(1633,1115,6943,3393,2405,4298,2730,3824,1858,7625,
+		5060,6118,3581,4368,9367,9360,5699,6355,9449,
+		4768,845,2816,8127,3762,4514,284,3748,2617,
+		552,610,2095,2296,693);
+provcol=rgb(red=1-pop/max(pop)/2,green=1-pop/max(pop)/2,blue=0);
+plot(china_map,col=getColor(china_map,provname,provcol,"white"),xlab="",ylab="")
+
+#获取区域ID
+getID=function(mapdata,provname)
+{
+	index=mapdata@data$NAME %in% provname;
+	ids=rownames(mapdata@data[index,]);
+	return(as.numeric(ids));
+}
+midchina=c("河南省","山西省","湖北省","安徽省","湖南省","江西省");
+getID(china_map,midchina)
+
+plot(china_map, col = getColor(china_map, midchina, rep("green", 6),
+    "white"), border = "white", xlab = "", ylab = "")
+```
+
+##添加标签
+```{r}
+par(mar=rep(0,4))
+dat = read.table("city.txt",header = FALSE,sep = ",")
+names(dat) <- c("city","jd","wd")
+library(maps)
+library(mapdata)
+map("china", col = "darkgray", ylim = c(18, 54), panel.first = grid())
+points(dat$jd, dat$wd, pch = 19, col = rgb(0, 0, 0, 0.5))
+text(dat$jd, dat$wd, dat[, 1], cex = 0.9, col = rgb(0,
+    0, 0, 0.7), pos = c(2, 4, 4, 4, 3, 4, 2, 3, 4, 2, 4, 2, 2,
+    4, 3, 2, 1, 3, 1, 1, 2, 3, 2, 2, 1, 2, 4, 3, 1, 2, 2, 4, 4, 2))
+axis(1, lwd = 0); axis(2, lwd = 0); axis(3, lwd = 0); axis(4, lwd = 0)
+```
+
+##pointlabel函数使用
+```{r}
+library(maptools)
+map("china", col = "darkgray", ylim = c(18, 54), panel.first = grid())
+points(dat$jd, dat$wd, pch = 19, col = rgb(0, 0, 0, 0.5))
+pointLabel(dat$jd, dat$wd, dat[, 1], cex = 0.9, col = rgb(0,
+    0, 0, 0.7))
+```
+
+##地区地图
+```{r}
+tianjin <- subset(CHN3,CHN3@data$NAME_2=="Tianjin")
+plot(tianjin)
+getColor2=function(mapdata,name,col,othercol)
+{
+	f=function(x,y) ifelse(x %in% y,which(y==x),0);
+	colIndex=sapply(mapdata@data$NL_NAME_3,f,name);
+	fg=c(othercol,col)[colIndex+1];
+	return(fg);
+}
+name=c("宝坻区", "北辰区", "大港区" ,"蓟县" );
+col=c("red","green","yellow","purple");
+plot(tianjin,col=getColor2(tianjin,name,col,"white"),xlab="",ylab="")
+points(tianjinlabel$lon, tianjinlabel$lat, pch = 19, col = rgb(0, 0, 0, 0.5))
+pointLabel(tianjinlabel$lon, tianjinlabel$lat, tianjinlabel$county, cex = 0.6, col = rgb(0,
+    0, 0, 0.7))
+```
+
