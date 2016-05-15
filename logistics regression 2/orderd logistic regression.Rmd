@@ -1,0 +1,270 @@
+---
+title: "Logistic回归详解(二)——有序及无序多分类Logistic回归"
+author: "余文华"
+date: "2016年5月14日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#前言
+
+    接着上期Logistic回归的学习，这期我将主要介绍无序多分类Logistic回归及有序Logistic回归。内容主要包括：
+    
+1. 无序多分类及有序Logistic回归使用情形
+2. 基本统计学原理及统计假设
+3. R实现及可视化
+4. 模型变量选择，模型检验、预测、评价等
+
+#概述
+
+    不同于二分类logistic回归，有序多分类logistic回归(或无序多分类)适用于应变量为等级、程度差别的资料(或无序分类资料)，它基于累积概率构建回归模型。有序logistic回归模型可表示为：
+    Y为一个等级变量包括g个类别，因此有序多分类logistic回归有g-1个方程，从公式中我们还可以注意到各方程回归系数相同，不同方程差别主要体现在常数项上，这主要是因为我们在做有序logistics回归前有个平行性假设，假定自变量g-1个模型中对累积概率的优势比（OR值）影响相同，即不同累积logit回归线相互平行，也叫成比例发生比假设。
+    与有序logistics回归不同，无序多分类logistics回归方程中自变量回归系数可以不同，模型可表示为：
+    因此无序多分类logistics回归可以说是二分类logistics回归的扩展。
+
+#有序Logistic回归
+
+    为方便理解，我们还是引入一个例子来说明：
+    研究者希望通过收集毕业学生性别、父母教育状况(low\high)、毕业时的学校性质(public\private)以及gpa成绩，了解(预测)学生对待申请毕业去向学校的态度(unlikely\somewhat likely\very likely)  。 显然态度倾向属于等级类型 ，为有序 资料。
+##数据读取    
+```{r, message=FALSE}
+require(foreign)
+require(nnet)
+require(ggplot2)
+require(reshape2)
+dat <- read.dta("http://www.ats.ucla.edu/stat/data/ologit.dta")
+head(dat)
+#数据描述
+ftable(xtabs(~ public + apply + pared, data = dat))
+```
+
+##平行性假设检验
+
+    有序Logistic回归分析主要用到MASS包和VGAM包，但平行性假设只有VGAM包可以完成，我们首先运用VGAM包实现平行性假设，然后通过平行性假设的原理，构建一个可视化的平行性验证方法。
+   
+###用VGAM包进行平行性检验
+```{r, message=FALSE}
+library(VGAM)
+#建立模型
+#parallel = TRUE,指模型满足平行性假设
+model1 <- vglm(ordered(apply) ~ pared + public +gpa,data = dat,family = cumulative(parallel = TRUE))
+summary(model1)
+#VGAM包可以直接给出各变量P值
+#parallel = FALSE,指模型不满足平行性假设，即拟合多项ligistic回归模型
+model2 <- vglm(ordered(apply) ~ pared + public +gpa,data = dat,family = cumulative(parallel = FALSE))
+#建立假设
+#H0：平行性模型与非平行性模型拟合效果一致
+#H1：平行性模型与非平行性模型拟合效果不一致
+#似然比检验平行性假设
+lrtest(model1,model2)
+#结果表明，p>0.05,满足平行性假设，model1成立
+is.parallel(model1)
+```
+
+    通过parallel = TRUE和FALSE,构建2个满足平行性假设和不满足平行性假设的模型，建立假设，通过lrtest()似然比检验平行性假设（两模型的一致性）。
+    #结果表明，p>0.05,满足平行性假设，model1成立.运用is.parallel(model1)可查看结果的平行性。
+    
+###运用绘图方法查看模型平行性
+    
+    运用Hmisc包创建函数sf(),计算大于或等于目标变量(如y>=2)，累积概率log值；再通过summary()构建一个结果的表格。我们也可以构建一个如以y>=2，二分类Logistic回归模型，来验证表格数据的准确性。当pared1=1时，代入glm方程，-0.378+1.1438=0.7658，即表格中pared为1，y>=2对应的表格值。分别计算每行数据，累积概率P(y>=3)-p(y>=2)值，即得到变量分别为0，1时的log差值，通过判断差值相差距离，可视化平行性假设（差值距离相近）。由图可见，pared及gpa在图中“+”距离相近，而public的“+”相距较远，说明pared及gpa满足平行性，而public不满足平行性假设。
+    
+```{r, message=FALSE}
+require(MASS)
+require(Hmisc)
+sf <- function(y) {
+  c('Y>=1' = qlogis(mean(y >= 1)),
+    'Y>=2' = qlogis(mean(y >= 2)),
+    'Y>=3' = qlogis(mean(y >= 3)))
+}
+
+(s <- with(dat, summary(as.numeric(apply) ~ pared + public + gpa, fun=sf)))
+s
+glm(I(as.numeric(apply) >= 2) ~ pared, family="binomial", data = dat)
+glm(I(as.numeric(apply) >= 3) ~ pared, family="binomial", data = dat)
+s[, 4] <- s[, 4] - s[, 3]
+s[, 3] <- s[, 3] - s[, 3]
+s 
+#plot
+plot(s, which=1:3, pch=1:3, xlab='logit', main=' ', xlim=range(s[,3:4]))
+```
+
+##模型检验
+###整体模型似然比检验
+```{r}
+VGAM::lrtest(model1)
+#模型卡方值为24.18，P<0.05，说明拒绝H0：所有回归系数为0假设，整体模型成立
+summary(model1)
+#所得模型public无统计学意义，其他变量有统计学意义
+```
+
+    所得累计logistic回归模型的logit线性形式如下：
+    logit(p(y <=1|X)) = 2.20335-1.04766pared1-0.61575gpa
+    logit(p(y <=2|X)) = 4.29879-1.04766pared1-0.61575gpa
+    对应的概率模型形式：
+    p(y <=1|X)= exp(2.20335-1.04766pared1-0.61575gpa)/(1+exp(2.20335-1.04766pared1-0.61575gpa))=1/(1+exp(-2.20335+1.04766pared1+0.61575gpa))
+    p(y <=2|X)= 1/(1+exp(-4.29879+1.04766pared1+0.61575gpa)
+    对待录取态度3个等级：unlikely、somewhat likely、very likely的可能性P1 = p(y <=1|X)，P2 = p(y <=2|X)- p(y <=1|X)，P3 = 1-P1-P2=1-p(y <=2|X)
+    
+##模型预测
+
+    通过predict()输出模型预测值，type参数指定输出数据，link为预测值输出，response为预测概率值输出，terms为输出所有变量等。
+    
+```{r}
+#预测概率值
+pp <- predict(model1,type = "response")
+dat2 <- cbind(dat,pp)
+#预测分类
+dat2$class <- max.col(pp)
+head(dat2)
+```
+##模型评价
+###预测分类正确率
+```{r}
+with(dat2,table(apply,class))
+```
+
+    模型正确判断“unlikely” 的比例为201/220=0.9136，但正确判断“somewhat likely”比例为20/140=0.1429，判断“very likely” 的比例为0 ，说明模型 拟合效果不好。
+
+###广义决定系数R^2
+
+    由上面程序计算广义R^2,都接近0，远离1，说明模型拟合效果不好。
+```{r}
+model1.null<-vglm(apply~ 1, data=dat, family=cumulative(parallel=T)) 
+LLf <- logLik(model1) 
+LL0 <- logLik(model1.null) 
+N<-nrow(dat) 
+#McFadden pseudo-R2, Cox & Snell -R2, Nagelkerke -R2 
+cbind( 'McFadden R2'= 1 - (LLf / LL0) ,
+       'Cox & Snell R2'=1 - exp((2/N) * (LL0 - LLf)) , 
+       'Nagelkerke R2'=(1 - exp((2/N) * (LL0 - LLf))) / (1 - exp(LL0)^(2/N)) )
+```
+
+#MASS包构建有序Logistic回归模型
+
+    MASS包无法直接出现P值结果，需要编辑公式计算,Hess=TRUE表示在最优化下，输出观察信息矩阵。
+    
+```{r}
+m <- polr(apply ~ pared + public +gpa,data = dat,Hess = TRUE)
+#计算p值
+ctable <- coef(summary(m))
+p <- pnorm(abs(ctable[,"t value"]),lower.tail = FALSE)*2
+ctable <- cbind(ctable,"p value" = p)
+#CI
+(ci <- confint(m)) # default method gives profiled CIs
+confint.default(m) # CIs assuming normality
+## OR and CI
+exp(cbind(OR = coef(m), ci))
+summary(m)
+```
+
+    注意的是：MASS包polr函数中，结果的常数项（截距）的计算结果值与vglm()函数的结果完全一致，但是自变量(例如pared1)的回归系数的值1.0476则刚好与vglm()函数的结果值-1.0476符号相反，这是因为两个函数定义的模型形式有差异所致。MASS包的polr()函数的累积logistic模型定义是logit(p(y <=j|X)) = 截距-eta ，采用的是减法 形式，而一般的累积logistic回归，如vglm()，的函数定义形式是logit(p(y <=j|X)) = 截距+eta ，是加法形式，所以两种定义计算出来的符号刚好 相反。
+   
+##变量选择
+
+    在R中运用MASS包的step()函数进行逐步回归分析，采用AIC选择自变量。R的逐步法函数step()通过使用选项direction=’backward’、direction=’forward’、direction=’both’分别指定了向后逐步法、向前逐步法和双向逐步法。
+    运用dropl()函数进行自变量的似然比检验，public无统计学意义，可考虑删除。
+```{r}
+selecting <- step(m,direction = "backward")
+selecting$anova
+droping <- drop1(m,test = "Chisq")
+```
+
+    默认采用向后法。如果是采用向后法必须首先建立包含所有自变量的模型即全模型；如果采用向前法、逐步法除了必须要建立包含所有变量的全模型作为逐步法的终点外，还需建立最小变量模型作为逐步法起点，一般最小模型是不包含自变量的空模型。逐步法的结果输出中引入自变量用符号‘+’，删除自变量用符号‘-’，同时列出对应的AIC变化。
+    上面结果中，Start:  AIC=727.02开始时模型的AIC，此时模型形式是apply ~ pared + public + gpa,模型为全模型，由于引入public后模型的AIC减少，所以首先引入public；下一步AIC=725.06，删除模型内的gpa和pared都使AIC的值增大，所以，逐步过程到此结束。
+    需要加以说明的是在有序变量赋值时，为与流行病学上对优势比解释保持一致（OR>1为危险因素，OR<1为保护因素），在对应变量赋值时应将专业上最不利的等级赋予最小值，最有利的赋予最大值，如病情从“严重”到“轻”，赋值为1，2，3等。
+    
+###绘图展示
+
+    创建一个新数据集，查看gpa在不同取值时的概率曲线。
+    
+```{r}
+newdat <- data.frame(
+  pared = rep(0:1, 200),
+  public = rep(0:1, each = 200),
+  gpa = rep(seq(from = 1.9, to = 4, length.out = 100), 4))
+newdat <- cbind(newdat, predict(m, newdat, type = "probs"))
+
+##show first few rows
+head(newdat)
+#plot
+lnewdat <- melt(newdat, id.vars = c("pared", "public", "gpa"),
+  variable.name = "Level", value.name="Probability")
+head(lnewdat)
+ggplot(lnewdat, aes(x = gpa, y = Probability, colour = Level)) +
+  geom_line() + facet_grid(pared ~ public, labeller="label_both")
+```
+#无序多分类Logistic回归
+
+    前面说到无序多分类Logistic回归为二分类Logistic回归的扩展，因此理解起来可以参考二分类Logistic回归，注意的是需要提前通过relevel()说明参照水平，运用VGAM包时，设定pallels=FALSE即可，而运用nnet包中的multinom函数也可构建无序多分类Logistic回归。下面以nnet包分析说明。
+    同样举例说明，通过分析200名学生社会经济水平(low\middle\high),写作得分，来预测学生选择课程的类型(general\academic\vocation)。显然课程类型属于无序多分类资料，我们运用无序多分类Logistic回归进行分析。
+    
+```{r}
+require(foreign)
+require(nnet)
+require(ggplot2)
+require(reshape2)
+```
+    
+##读取数据
+```{r}
+ml <- read.dta("http://www.ats.ucla.edu/stat/data/hsbdemo.dta")
+with(ml,table(ses,prog))
+with(ml,do.call(rbind,tapply(write,prog,
+                             function(x) c(M = mean(x),SD = sd(x)))))
+
+```
+
+##无序分类回归模型构建
+```{r}
+ml$prog2 <- relevel(ml$prog,ref = "academic")
+test <- multinom(prog2 ~ ses + write, data = ml)
+summary(test)
+```
+
+##计算P值
+```{r}
+z <- summary(test)$coefficients/summary(test)$standard.errors
+p <- (1 - pnorm(abs(z), 0, 1))*2
+p
+exp(coef(test))
+head(pp <- fitted(test))
+```
+##预测可能性
+```{r}
+dses <- data.frame(ses = c("low", "middle", "high"),
+  write = mean(ml$write))
+predict(test, newdata = dses, "probs")
+
+dwrite <- data.frame(ses = rep(c("low", "middle", "high"), each = 41),
+  write = rep(c(30:70), 3))
+## store the predicted probabilities for each value of ses and write
+pp.write <- cbind(dwrite, predict(test, newdata = dwrite, type = "probs", se = TRUE))
+by(pp.write[,3:5],pp.write$ses,colMeans)
+```
+
+##分类绘图
+
+    运用melt函数转换“宽”数据为“长”数据，方便运用ggplot进行绘图分析
+    
+```{r}
+## melt data set to long for ggplot2
+lpp <- melt(pp.write, id.vars = c("ses", "write"), value.name = "probability")
+# view first few rows
+head(lpp)
+## plot predicted probabilities across write values for
+## each level of ses facetted by program type
+ggplot(lpp, aes(x = write, y = probability, colour = ses)) +
+  geom_line() +
+  facet_grid(variable ~ ., scales="free")
+```
+
+##参考资料
+>- idre Institute for Digital Research and Education:Data Analysis Examples <http://www.ats.ucla.edu/stat/dae/>
+
+>- R软件-医学统计分析-有序logistic回归 <http://wenku.baidu.com/link?url=5qliS_YiD2X2UH82wmbryB5GIvBhBsR5yh6z-MDtuC1NTJTV5cd6QmOhPKWsD_zTm9IL7Jpg71zL07w5_-D6S1Am7SM_aFF5f6a028aLUju>
+
+>- 王汉生. (2008). 应用商务统计分析
+
+>- 其他相关资料
