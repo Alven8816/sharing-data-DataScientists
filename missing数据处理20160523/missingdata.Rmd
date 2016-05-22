@@ -1,0 +1,170 @@
+---
+title: "缺失值填补"
+author: "余文华"
+date: "2016年5月22日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+```
+
+## 缺失值概述
+
+    缺失的数据有两种类型： 
+
+1.MCAR:完全随机缺失，这是数据缺失的理想状况。
+
+2.MNAR:非随机缺失，在这种情况下，你可能需要去检查数据的收集过程并且试着理解数据为什么会丢失。例如，大多数人在一项调查中不回答某个问题，可能是因为问题敏感而特意回避不回答，就属于非随机缺失。
+
+    假设数据缺失的类型是MCAR，过多的数据丢失也是一个问题。通常，一个可靠的最大阈值是数据集总数的5%。如果某些特征或样本缺失的数据超过了5%，你可能需要忽略掉这些特征或样本。
+
+##缺失值的查看
+
+    我们可以通过mice包中的md.pattern()函数快速查看数据缺失值情况。首先让我们通过R中的airquality空气质量数据集为例，通过Ozone、Solar.R、Wind及时间预测温度水平。并对数据集做填充。
+    
+```{r}
+data1 <- airquality
+data1[1:5,5] <- NA
+summary(data1)
+```
+    
+    函数来检查下哪些特征（列）和样本（行）的数据缺失超过了5%。可以看到Ozone列的数据点缺失大约25%。因此，我们可能会考虑从分析中剔除它或者是对它做更多的收集。其他变量都低于5%的阈值，我们可以保留它们。
+
+```{r}
+pMiss <- function(x) {sum(is.na(x))/length(x)*100}
+apply(data1,2,pMiss)
+```
+
+###md.pattern()函数快速查看数据缺失值
+
+```{r}
+library(mice)
+md.pattern(data1)
+```
+
+    输出结果显示，有111个样本是完整的，35个样本仅缺失Qzone观测值，5个样本样本仅缺失Solar.R值等等。
+
+###利用VIM包缺失值可视化
+
+    VIM包是缺失值填补及可视化的专用包，aggr()函数是计算并绘图每个变量缺失值数目的函数。直方图展示了不同变量缺失值的构成，仍然是Ozone列的数据点缺失大约25%。不含任何缺失值数据约70%。
+    
+```{r}
+library(VIM)
+aggr_plot <- aggr(data1, col = c('navyblue', 'red'), numbers=TRUE, sortVars=TRUE, labels=names(data), cex.axis=.7, gap=3, ylab=c("Histogram of missing data", "Pattern"))
+```
+
+```{r}
+marginplot(data1[,c(1,2)])
+```
+    
+    这里限定对两个变量作图，也可以运用marginmatrix()对多个变量作图。左边的红色箱线图展示的是在Qzone值缺失的情况下Solar.R的分布，而蓝色箱线图展示的Qzone值不缺失的情况下Solar.R的分布。同样的，Qzone箱线图在底部。如果对数据缺失假定为MCAR类型正确的话，那么我们预期的红色箱线图和蓝色箱线图应该是非常相似的。
+    
+##缺失值的填补
+###运用均值、中位数、众数填补
+    使用均值、中位数、众数来代替缺失值应该是运用最广泛的方法之一。可以使用Hmisc包中的impute()实现。打梅花号数据表示填补后数据。
+```{r, include=FALSE}
+library(Hmisc)
+#均值填补
+impute(data1$Ozone,mean)
+#中位数填补
+impute(data1$Ozone,median)
+#具体值填补
+impute(data1$Ozone,45)
+#手动编辑
+data1$Temp[is.na(data1$Ozone)] <- mean(data1$Ozone,na.rm = TRUE)
+```
+
+####填补准确性计算
+
+    DMwR包是“Data Mining with R”一书中的数据及函数包。其中regr.eval()函数可以计算许多回归函数统计评价。最后结果mae为“mean absolute error”，mse为“mean squared error”，rmse为“ root mean squared error”。mape为“sum(|(t_i - p_i) / t_i|)/N”，可用来评价填补的准确性,详情可在SCAN中help查看。在本例中mape为0.436，误差还是比较高的。
+```{r}
+library(DMwR)
+actuals <- airquality$Temp[is.na(airquality$Ozone)]
+predicteds <- rep(mean(data1$Ozone, na.rm=T), length(actuals))
+regr.eval(actuals, predicteds)
+```
+
+###K最近邻算法(kNN)填补
+
+    K最近邻，就是k个最近的邻居的意思，说的是每个样本都可以用它最接近的k个邻居来代表。注意的是，在填补过程中，不能包含应变量即预测变量。
+    
+```{r}
+library(DMwR)
+knnOutput <- knnImputation(airquality[,-4])
+anyNA(knnOutput)
+```
+
+###rpart
+
+    DMwR::knnImputation一大缺点是无法填补分类变量。rpart可代替kNN预测缺失值。当处理分类变量时，设置method=class，对于数值变量，设置method=anova。同样在填补过程中，不能包含应变量即预测变量。
+    
+```{r}
+data1$Month <- factor(data1$Month)
+library(rpart)
+#Month为分类变量
+class_month <- rpart(Month ~ .-Temp,data=data1[!is.na(data1$Month),], method="class", na.action=na.omit)
+month_pred <- predict(class_month, data1[is.na(data1$Month), ])
+#Ozone为数值变量
+anove_Ozone <- rpart(Ozone ~ .-Temp,data=data1[!is.na(data1$Ozone),], method="anova", na.action=na.omit)
+Ozone_pred <- predict(anove_Ozone, data1[is.na(data1$Ozone), ])
+```
+
+####填补准确性计算
+
+```{r}
+actuals <- airquality$Month[is.na(data1$Month)]
+predicteds <- as.numeric(colnames(month_pred)[apply(month_pred, 1, which.max)])
+#计算错分率
+mean(actuals != predicteds)  
+```
+
+###运用mice包多重填补
+
+    mice函数通过链式方程生成多元插补。参数注解： 1. m=5指的是插补数据集的数量，5是默认值 2. meth=’pmm’指的是插补方法。在这里，我们使用预测均值匹配（Predictive mean matching ）作为插补方法。其他插补方法可以通过methods(mice)来查看。
+    
+```{r, include=FALSE}
+library(mice)
+tempData <- mice(data1,m=5,maxit=50,meth='pmm',seed=500)
+head(tempData$imp$Ozone) #查看插补的数据
+tempData$meth #每个变量所用的插补方法
+```
+    
+```{r}
+completedData <- complete(tempData,1)
+```
+    
+    可以使用complete()函数返回完整的数据集。缺失的值被五个数据集的第一个数据集做了替换。如果希望使用另一个数据集，只需更改complete()函数的第二个参数。
+    
+####查看初始数据和插补数据的分布情况
+
+    利用一些有用的图对初始数据和插补后的数据分布做对比。我们希望看到的是洋红点呈现出的形状（插补值）跟蓝色点（观测值）呈现出的形状是匹配的。从图中可以看 到，插补的值的确是“近似于实际值”。
+```{r}
+library(lattice)
+xyplot(tempData,Ozone ~ Wind+Temp+Solar.R,pch=18,cex=1)
+#密度曲线
+densityplot(tempData)
+```
+
+    洋红线是每个插补数据集的数据密度曲线，蓝色是观测值数据的密度曲线。再次根据我们之前的假定，我们希望这些分布是相似的。另一个有用的可视化是由stripplot()函数得到的包含个别点的变量分布图。
+    
+```{r}
+stripplot(tempData, pch = 20, cex = 1.2)
+```
+
+####查补数据的合并
+
+    假设我们下一步的分析是对数据拟合一个线性模型。你或许会问应该选择哪个插补数据集。mice包可以轻易的对每个数据集分别拟合一个模型，再把结果合并到一起。
+    modelFit1变量包含所有插补数据集的拟合结果，pool()函数将结果合并到一起。显然，仅从Qzone变量来看的话，是统计显著的。注意的是这里除了lm()模型给出的结果外还包含其它列：fim指的是各个变量缺失信息的比例，lambda指的是每个变量对缺失数据的贡献大小。
+   
+```{r}
+modelFit1 <- with(tempData,lm(Temp~ Ozone+Solar.R+Wind))
+summary(pool(modelFit1))
+```
+
+##参考资料
+>- data science+ Imputing Missing Data with R; MICE package <http://datascienceplus.com/imputing-missing-data-with-r-mice-package/>
+>- data science+ Missing Value Treatment <http://datascienceplus.com/missing-value-treatment/>
+>- 雪晴数据网 在R中填充缺失数据—mice包 <http://www.xueqing.tv/cms/article/98#rd?sukey=3903d1d3b699c2086ad2bc8733f0cec623a5180ca41b3c95863eb82de55b59b69e030458bb6cd8bb3b0dbdd561f94d74>
+>- mice: Multivariate Imputation by Chained Equations in R <https://www.jstatsoft.org/article/view/v045i03>
+>- 其他SCAN说明文档
