@@ -1,0 +1,102 @@
+---
+title: "异常值（离群值）的识别与侦测"
+author: "余文华"
+date: "2016年6月6日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+```
+
+## 异常点概述
+
+    在数据分析领域，偏离常规的行为常称为异常点或离群值，其标准定义是“一个观测值与其他观测值偏离太多而引起猜疑，认为它产生于不同的机制”（Hawkins1980）。异常点监控的前提：指标并无明显趋势，既不持续上涨，也不下降，同时不会经常大幅波动，即服从正态分布。
+    我们的数据来自《数据挖掘与R语言》的DMwR包的sales数据集，为某公司销售员所报告的交易数据，共包???401146行，变量包括销售员ID，产品编号，销售数量和总价值,Insp变量为3个可能值的因子变量（ok表示交易有效，fraud表示交易为欺诈，unkn为交易未经过公司审查）。我们的目的是根据公司过去的交易数据，寻找交易中可能出现的错误和欺诈企图（识别异常点），并对欺诈概率进行排名，将允许公司把有限的检验资源分配给提示有“可疑欺诈”的交易数据中。
+    
+```{r}
+library(DMwR)
+data(sales)
+head(sales)
+summary(sales)
+str(sales)
+table(sales$Insp)/nrow(sales)*100
+```
+    
+    正如预期的那样，欺诈行为比例相对较低，只占全部交易记录的0.317%。
+    
+##指标的异常点监测
+
+    首先让我们来实践下针对单一指标，如何识别和监测异常点。主要方法：
+1. 可通过boxplot()绘制箱图识别异常点;
+2. LOF局部离群点因子检;
+3. 运用qcc包绘制质量控制图;
+4. 聚类分析;
+
+###1.箱图
+
+    对于正态分布N~(u,σ^2),分别把u-3σ和u+3σ称为3倍标准差下的下限（LCL）和上限（UCL），其为3倍标准差下的异常点。对于转换率型指标，根据中心极限定理，当二项分布的样本足够大时，分布趋向均值p，标准差为sqr(p(1-p)/n)的正态分布。
+    为寻找欺诈交易，不可避免的要对每个产品交易价格进行分析，让我们看看最贵产品和最便宜产品的单价有无异常点（标准价格用中位数表示）。
+    
+```{r}
+#计算单价
+sales$Uprice <- sales$Val/sales$Quant
+upp <- aggregate(sales$Uprice,list(sales$Prod),median,na.rm= T)
+topP <- sapply(c(T,F), function(o)
+        upp[order(upp[,2],decreasing = o)[1:5],1])
+colnames(topP)<- c("Expensive","Cheap")
+topP
+tops <- sales[sales$Prod %in% topP[1,],c("Prod","Uprice")]
+tops$Prod <- factor(tops$Prod)
+boxplot(tops$Uprice ~ tops$Prod,ylab = "Uprice",log = "y")
+```
+    
+    由箱图可绘制最贵商品p3689和最便宜商品p560的异常点，现在让我们生成每个商品的异常点个数。列出前10的异常点个数的商品列???,boxplot.stats(x)$out储存所有监测出的离群点。
+    
+```{r}
+out <- tapply(sales$Uprice,list(Prod = sales$Prod),
+              function(x) length(boxplot.stats(x)$out))
+out[order(out,decreasing = T)[1:10]]
+```
+
+###2.质量监控图
+
+    qcc包是专业绘制质量监控图的算法包，其核心函数是qcc(data,type,nsigmas = 3,plot = TRUE)
+```{r}
+library(qcc)
+sol <- qcc(sales[sales$Prod =="p580","Uprice"],type = "xbar.one")
+```
+    
+    我们选取p580产品的质量控制图，图中CL为单价的均值，UCL和LCL???3倍标准差上下限。可以看出有1个红色“报警”点为离群点，黄色为超出2倍标准差“可疑点”。
+    
+###3.局部离群点因子（LOF）
+
+    LOF是一种识别基于密度的局部离群点算法，但只用于数值型数据。使用局部离群点因子，将一个点的局部密度与其他领域进行比较，如果其局部密度远小于领域密度（LOF>1）,则该点相对于其领域位于一个密度更稀疏的区域，判断为离群点。使用lofactor()函数可以实现。注意必须是非缺失计量资料。
+```{r}
+library(DMwR)
+#删除缺失???
+sales2 <- sales[-which(is.na(sales$Quant) | is.na(sales$Val)),]
+test <- sales2[1:1000,c(3,4)]
+outlier <- lofactor(test,k = 5)
+plot(density(outlier))
+#提取前5个离群值
+outliers <- order(outlier,decreasing = T)[1:5]
+#绘制离群图
+pch <- rep(".",nrow(test))
+pch[outlier]<- "+"
+col <- rep("black",nrow(test))
+col[outlier]<- "red"
+plot(log(test$Quant),log(test$Val),pch= pch, col = col,cex = 1.2)
+```
+
+###4.聚类方法
+
+    将数据进行划分，那些没有被划分到任何簇的数据点即为离群点。聚类方法有DBSCAN基于密度的聚类（如果两个对象之间是密度可达的，则这两个对象被划分到同一组）；K-mean聚类算法，将数据划分为k组，每个数据点都划分到与之其最小距离的分组,计算每个对象与簇中心点距离，并将距离最大的对象作为离群点。具体代码详情可参考《R语言与数据挖掘最佳实践和经典案例》第7章内容。
+
+##参考资
+>- 《数据挖掘与R语言??? Luis Torgo
+>- 《R语言与网址分析》刘明
+>- 《R语言与数据挖掘最佳实践和经典案例》Yanchang Zhao 
+>- Creasera 机器学习
+>- SCAN 说明文档等
+
