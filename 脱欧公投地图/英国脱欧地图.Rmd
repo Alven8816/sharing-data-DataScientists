@@ -1,0 +1,147 @@
+---
+title: "绘制英国公投地图"
+author: "余文华"
+date: "2016年6月25日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##以下将会学习到：
+
+1. geojson地图格式数据
+
+2. 网页数据抓取
+
+3. stringdist包中的模糊匹配
+
+4. 脱欧地图可视化的建立
+
+## 概述
+
+    最近最火的国际事件莫过于英国的“退欧”公投了，6月24日英国公投全部计票结束，51.9%的选民支持英国脱离欧盟。周围小伙伴们都议论纷纷，而之后的连锁反应也让人应接不暇，英国首相卡梅伦宣布将辞去首相职务，英国逾50万人请愿二次公投，还有民众发起请愿，呼吁伦敦独立加入欧盟。恍惚间，经过一觉醒来，英国人民又后悔自己的“选择”。那让我们通过数据地图方式，来看看脱欧公投，英国各地的投票情况。（全文代码来自Rpbus）
+
+##创建选举结果区域地图
+
+###1. 获取权威地图信息
+
+    首先让我们获取应该的地图信息，这里通过github，获取Geojson格式的英国地图信息。GeoJSON是一种地理数据结构的描述格式，其结构同JSON，我们可以简单理解为加带一定条件的json格式数据，通过geojson_read()读取到las。
+    
+```{r, message=FALSE, warning=FALSE}
+pkgs = c("rvest", "geojsonio", "tmap", "dplyr",
+         "stringdist")
+lapply(pkgs, library, character.only = T)
+
+url = "https://github.com/npct/pct-bigdata/raw/master/las-dbands.geojson"
+download.file(url, "las.geojson")
+las = geojson_read("las.geojson", what = "sp")
+```
+
+###2. 网络抓取选举结果
+
+    通过bbc的EU Referendum <http://www.bbc.co.uk/news/politics/eu_referendum/results/local/a>,可以看到应该不同州郡的脱欧公投的比例，通过XML格式数据的抓取方法，我们可以抓取到以字母A开头的各郡县名称及选择愿意“脱欧”的比例，并运用tmap包qtm()函数快速作图。
+
+```{r}
+url = "http://www.bbc.co.uk/news/politics/eu_referendum/results/local/a"
+bbc = read_html(url)
+#抓取A开头的郡县名称
+la_name = bbc %>%
+  html_nodes(".eu-ref-result-bar__title") %>% 
+  html_text()
+#抓取公投比例数据
+vote_leave = bbc %>%
+  html_nodes(".eu-ref-result-bar__party-votes--percentage") %>% 
+  html_text() %>% 
+  gsub(pattern = " |%", replacement = "") %>% 
+  as.numeric() 
+#仅保留愿意“脱欧”的比例
+vote_leave = vote_leave[(1:length(la_name)) * 2 - 1]
+ref_result = data_frame(geo_label = la_name, `% vote leave` = vote_leave)
+#把获取的公投数据与geojson地图数据拼接
+las@data = left_join(las@data, ref_result)
+#运用tmap包qtm()函数快速作图
+qtm(las, "% vote leave")
+```
+
+###3. 抓取全部郡县公投数据
+
+    以上只是抓取的以字母A开头的郡县公投数据，接下来我们根据字母顺序，运用同样方法依次抓取其他全部郡县公投数据。
+```{r}
+i = "b"
+for(i in letters[-1]){
+  url = "http://www.bbc.co.uk/news/politics/eu_referendum/results/local/"
+  url = paste0(url, i)
+  url_exists = RCurl::url.exists(url)
+  if(!url_exists) next
+  bbc = read_html(url)
+  la_name = bbc %>%
+    html_nodes(".eu-ref-result-bar__title") %>% 
+    html_text()
+  vote_leave = bbc %>%
+    html_nodes(".eu-ref-result-bar__party-votes--percentage") %>% 
+    html_text() %>% 
+    gsub(pattern = " |%", replacement = "") %>% 
+    as.numeric() 
+    vote_leave = vote_leave[(1:length(la_name)) * 2 - 1]
+  ref_res_tmp = data_frame(geo_label = la_name, `% vote leave` = vote_leave)
+  ref_result = bind_rows(ref_result, ref_res_tmp)
+}
+ref_result_orig = ref_result
+las = geojson_read("las.geojson", what = "sp")
+las$geo_label = as.character(las$geo_label)
+```
+
+###4. 对郡县名称进行模糊匹配
+
+    抓取完所有郡县公投数据后，会出现抓取地名与Geojson地图中geo_label列表数据不完全一致情况，因此，需要采用手动匹配或自动模糊匹配方式，进行字段匹配。
+    手动匹配很好理解，通过发现抓取ref_result列表地名与las$geo_label列表不一致时，进行替换,我们看到有40个地名出现不一致；自动匹配则用到stringdist包中的模糊匹配amatch()函数，方法选用“osa”(Optimal String Alignment distance)方法,当然也可以选择“lv”、“soundex”等方法，可以help查看学习。字符串最大距离设置为3。
+    
+```{r}
+# 手动匹配
+ref_result$geo_label[grep("Corn", ref_result$geo_label)] =
+  las$geo_label[grep("Corn", las$geo_label)]
+ref_result$geo_label[grep("Heref", ref_result$geo_label)] =
+  las$geo_label[grep("Heref", las$geo_label)]
+
+# 自动匹配
+msel = !ref_result$geo_label %in% las$geo_label
+mismatches = ref_result$geo_label[msel]
+ams = amatch(mismatches, las$geo_label, method = "osa", maxDist =3)
+pmatches = cbind(as.character(las$geo_label[ams]),
+                 ref_result$geo_label[msel])
+
+las@data = left_join(las@data, ref_result)
+```
+
+###5. 绘制脱欧公投地图
+
+    运用tmap包快速绘制脱欧地图，我们把公投比例-50，以不同颜色标明不同地区对待公投的态度。
+```{r}
+summary(las$`% vote leave`)
+las$`% vote leave` = las$`% vote leave` - 50
+tm <- tm_shape(las) +
+  tm_fill("% vote leave", palette = "RdBu",
+    title = "% vote leave\n(swing)") +
+  tm_borders(lwd = 0.1)
+print(tm)
+```
+
+## 说明
+    
+    本文来自于Robin的github<https://github.com/Robinlovelace>,是对其代码的翻译和学习，不涉及任何版权和政治商业利益。
+    
+##参考资料
+
+>- Robin Robinlovelace github.<https://github.com/Robinlovelace>
+
+>- bbc EU referendum<http://www.bbc.com/news/politics/eu_referendum/results/local/a>
+
+>- Rpubs <http://rpubs.com/RobinLovelace/191688>
+
+>- 腾讯新闻：媒体释疑英国脱欧引发的5大动荡：谁是最大赢家 <http://news.qq.com/a/20160625/003308.htm?pgv_ref=aio2015&ptlang=2052>
+
+>- Geojson 介绍 <http://www.360doc.com/content/13/0917/09/1073512_315087406.shtml>
+
+>- scan help文档等
