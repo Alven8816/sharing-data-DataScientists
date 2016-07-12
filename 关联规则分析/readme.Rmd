@@ -1,0 +1,83 @@
+---
+title: "购物篮关联规则分析"
+author: "余文华"
+date: "2016年7月12日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 读取数据
+
+    从github中读取groceries.csv数据。Member_number:购物者ID；Date：购物时间；ItemDescription：购买物品条目。
+    
+```{r}
+df_groceries <- read.csv("groceries.csv",header = TRUE,stringsAsFactors = FALSE)
+```
+
+##数据清洗和操作
+
+    我们使用Apriori算法，要求的格式必须是“basket”格式：第一列为每个购物者的唯一编码，第二列是一系列购物条目列表，由逗号，空格或等其他分割。格式如下：
+    
+    ![basket](http://datascienceplus.com/wp-content/uploads/2016/07/image10-1.png)
+    
+    由于我们的数据结构并不满足要求，因此必须进行数据清洗和变换操作。首先对Member_number进行排序并转换为数值变量。
+```{r}
+df_groceries$Member_number<- gsub("^[0-9]+\\t","",df_groceries$Member_number)
+df_sorted <- df_groceries[order(df_groceries$Member_number),]
+df_sorted$Member_number <- as.numeric(df_sorted$Member_number)
+```
+
+    我们运用plyr包中的ddply函数转换数据框为我们想要的“basket”格式，使相同ID的多列合并为一列。完成转换后，我们删除不需要的date列和Member_number列。
+```{r}
+library(plyr)
+df_itemlist <- ddply(df_groceries,c("Member_number","Date"),
+                     function(df1)paste(df1$itemDescription,collapse = ","))
+df_itemlist$Date <- NULL
+df_itemlist$Member_number <- NULL
+colnames(df_itemlist) <- c("itemList")
+write.csv(df_itemlist,"ItemList.csv", row.names = TRUE)
+```
+
+##发现关联规则
+
+    我们用R实现关联规则，使用的是arules包读取转换格式数据并进行规则发现。运用read.transactions()读取itemlist数据，使转换为basket数据格式。rm.duplicates 删除重复数据；format= "basket",(row 1:交易ID，row 2:商品条目列表)，sep 规定条目分割字符；cols规定交易ID所占的列数为1。我们删除@labels中的引号。   
+```{r, message=FALSE, warning=FALSE}
+library(arules)
+txn <- read.transactions(file = "ItemList.csv",rm.duplicates = TRUE,format = "basket",sep = ",",cols = 1)
+txn@itemInfo$labels <- gsub("\"","",txn@itemInfo$labels)
+```
+    最后，通过设置最小支持度和可信度，实现apriori算法。
+```{r, message=FALSE, warning=FALSE}
+basket_rules <- apriori(txn,parameter = list(sup = 0.01,conf = 0.5,target = "rules"))
+```
+   
+##关联规则可视化
+
+    为了实现关联规则的可视化，我们可以运用inspect()函数。(注意前提是不能与tm包冲突，在使用前先解绑tm包)。
+    
+```{r}
+if(sessionInfo()['basePkgs']=="tm"|sessionInfo()['otherPkgs']=="tm"){
+        detach(package:tm,unload = TRUE)
+}
+inspect(basket_rules)
+#转换为数据框查看
+da_basket <- as(basket_rules,"data.frame")
+View(da_basket)
+#查看前五的商品
+itemFrequencyPlot(txn, topN = 5)
+```
+    
+    也可通过arulesViz包来可视化关联规则图形。
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+library(arulesViz)
+plot(basket_rules)
+plot(basket_rules, method = "grouped", control = list(k = 5))
+plot(basket_rules, method="graph", control=list(type="items"))
+plot(basket_rules, method="paracoord",  control=list(alpha=.5, reorder=TRUE))
+plot(basket_rules,measure=c("support","lift"),shading="confidence",interactive=T)
+
+```
+
