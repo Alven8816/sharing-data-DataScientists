@@ -1,7 +1,7 @@
 ---
-title: "网页排名算法 (Pagerank Algorithm)分析金州勇士队员排名及传球路线"
-author: "余文华"
-date: "2016年4月10日"
+title: "脥酶脪鲁脜脜脙没脣茫路篓 (Pagerank Algorithm)路脰脦枚陆冒脰脻脫脗脢驴露脫脭卤脜脜脙没录掳麓芦脟貌脗路脧脽"
+author: "脫脿脦脛禄陋"
+date: "2016脛锚4脭脗10脠脮"
 output: html_document
 ---
 
@@ -9,62 +9,62 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## 文前摘要
+## 脦脛脟掳脮陋脪陋
 
-    通过本篇文章，你将学习到：
+    脥篓鹿媒卤戮脝陋脦脛脮脗拢卢脛茫陆芦脩搂脧掳碌陆拢潞
     
-1. 网页排名算法 (Pagerank Algorithm)的简要概述
+1. 脥酶脪鲁脜脜脙没脣茫路篓 (Pagerank Algorithm)碌脛录貌脪陋赂脜脢枚
 
-2. 运用Pagerank算法实现NBA金州勇士队传球路线及球员的重要程度分析
+2. 脭脣脫脙Pagerank脣茫路篓脢碌脧脰NBA陆冒脰脻脫脗脢驴露脫麓芦脟貌脗路脧脽录掳脟貌脭卤碌脛脰脴脪陋鲁脤露脠路脰脦枚
 
-3. 通过R中的networkD3包实现可交互的D3制图
+3. 脥篓鹿媒R脰脨碌脛networkD3掳眉脢碌脧脰驴脡陆禄禄楼碌脛D3脰脝脥录
 
     
-##Pagerank算法概述
+##Pagerank脣茫路篓赂脜脢枚
     
-    说起Pagerank算法，不得不提起谷歌搜索，可以说是pagerank成就了Google，也可以说Google成就了Pagerank算法。Pagerank是一种由 据网页之间相互的超链接计算的技术，以Google公司创办人拉里·佩奇（Larry Page）之姓来命名。
+    脣碌脝冒Pagerank脣茫路篓拢卢虏禄碌脙虏禄脤谩脝冒鹿脠赂猫脣脩脣梅拢卢驴脡脪脭脣碌脢脟pagerank鲁脡戮脥脕脣Google拢卢脪虏驴脡脪脭脣碌Google鲁脡戮脥脕脣Pagerank脣茫路篓隆拢Pagerank脢脟脪禄脰脰脫脡 戮脻脥酶脪鲁脰庐录盲脧脿禄楼碌脛鲁卢脕麓陆脫录脝脣茫碌脛录录脢玫拢卢脪脭Google鹿芦脣戮麓麓掳矛脠脣脌颅脌茂隆陇脜氓脝忙拢篓Larry Page拢漏脰庐脨脮脌麓脙眉脙没隆拢
     
-> PageRank 是基于「从许多优质的网页链接过来的网页，必定还是优质网页」的回归关系，来判定所有网页的重要性。
+> PageRank 脢脟禄霉脫脷隆赂麓脫脨铆露脿脫脜脰脢碌脛脥酶脪鲁脕麓陆脫鹿媒脌麓碌脛脥酶脪鲁拢卢卤脴露篓禄鹿脢脟脫脜脰脢脥酶脪鲁隆鹿碌脛禄脴鹿茅鹿脴脧碌拢卢脌麓脜脨露篓脣霉脫脨脥酶脪鲁碌脛脰脴脪陋脨脭隆拢
 
-    PageRank的计算基于以下两个基本假设：
+    PageRank碌脛录脝脣茫禄霉脫脷脪脭脧脗脕陆赂枚禄霉卤戮录脵脡猫拢潞
 
-* 数量假设：如果一个页面节点接收到的其他网页指向的入链数量越多，那么这个页面越重要
-* 质量假设：指向页面A的入链质量不同，质量高的页面会通过链接向其他页面传递更多的权重。所以越是质量高的页面指向页面A，则页面A越重要。
+* 脢媒脕驴录脵脡猫拢潞脠莽鹿没脪禄赂枚脪鲁脙忙陆脷碌茫陆脫脢脮碌陆碌脛脝盲脣没脥酶脪鲁脰赂脧貌碌脛脠毛脕麓脢媒脕驴脭陆露脿拢卢脛脟脙麓脮芒赂枚脪鲁脙忙脭陆脰脴脪陋
+* 脰脢脕驴录脵脡猫拢潞脰赂脧貌脪鲁脙忙A碌脛脠毛脕麓脰脢脕驴虏禄脥卢拢卢脰脢脕驴赂脽碌脛脪鲁脙忙禄谩脥篓鹿媒脕麓陆脫脧貌脝盲脣没脪鲁脙忙麓芦碌脻赂眉露脿碌脛脠篓脰脴隆拢脣霉脪脭脭陆脢脟脰脢脕驴赂脽碌脛脪鲁脙忙脰赂脧貌脪鲁脙忙A拢卢脭貌脪鲁脙忙A脭陆脰脴脪陋隆拢
     
-> 计算公式：
+> 录脝脣茫鹿芦脢陆拢潞
 
-* PR(pi): pi页面的PageRank值
-* n: 所有页面的数量
-* pi: 不同的网页p1,p2,p3
-* M(i): pi链入网页的集合
-* L(j): pj链出网页的数量
-* d:阻尼系数, 任意时刻，用户到达某页面后并继续向后浏览的概率。
-* (1-d=0.15) :表示用户停止点击，随机跳到新URL的概率取值范围: 0 < d ≤ 1, Google设为0.85
+* PR(pi): pi脪鲁脙忙碌脛PageRank脰碌
+* n: 脣霉脫脨脪鲁脙忙碌脛脢媒脕驴
+* pi: 虏禄脥卢碌脛脥酶脪鲁p1,p2,p3
+* M(i): pi脕麓脠毛脥酶脪鲁碌脛录炉潞脧
+* L(j): pj脕麓鲁枚脥酶脪鲁碌脛脢媒脕驴
+* d:脳猫脛谩脧碌脢媒, 脠脦脪芒脢卤驴脤拢卢脫脙禄搂碌陆麓茂脛鲁脪鲁脙忙潞贸虏垄录脤脨酶脧貌潞贸盲炉脌脌碌脛赂脜脗脢隆拢
+* (1-d=0.15) :卤铆脢戮脫脙禄搂脥拢脰鹿碌茫禄梅拢卢脣忙禄煤脤酶碌陆脨脗URL碌脛赂脜脗脢脠隆脰碌路露脦搂: 0 < d 隆脺 1, Google脡猫脦陋0.85
 
-##实现NBA金州勇士队传球路线及球员的重要程度分析
+##脢碌脧脰NBA陆冒脰脻脫脗脢驴露脫麓芦脟貌脗路脧脽录掳脟貌脭卤碌脛脰脴脪陋鲁脤露脠路脰脦枚
 
-###读取数据
+###露脕脠隆脢媒戮脻
 
-    数据来源于YUKI KATOH的博客及其github，在其博客中说明了数据来源：
+    脢媒戮脻脌麓脭麓脫脷YUKI KATOH碌脛虏漏驴脥录掳脝盲github拢卢脭脷脝盲虏漏驴脥脰脨脣碌脙梅脕脣脢媒戮脻脌麓脭麓拢潞
 
-> 调用API，从NBA.com中playerdashptpass 的端点并且将同队所有球员数据保存到本地的 JSON 文件中。数据来自 2015-16赛季的传球记录。
+> 碌梅脫脙API拢卢麓脫NBA.com脰脨playerdashptpass 碌脛露脣碌茫虏垄脟脪陆芦脥卢露脫脣霉脫脨脟貌脭卤脢媒戮脻卤拢麓忙碌陆卤戮碌脴碌脛 JSON 脦脛录镁脰脨隆拢脢媒戮脻脌麓脳脭 2015-16脠眉录戮碌脛麓芦脟貌录脟脗录隆拢
 
-    本文直接读取已经抓取数据（笔者尝试抓取并项通过rlist包把json清洗为理想的数据集，还尚未成功，只好先拿其结构化数据一试）。
+    卤戮脦脛脰卤陆脫露脕脠隆脪脩戮颅脳楼脠隆脢媒戮脻拢篓卤脢脮脽鲁垄脢脭脳楼脠隆虏垄脧卯脥篓鹿媒rlist掳眉掳脩json脟氓脧麓脦陋脌铆脧毛碌脛脢媒戮脻录炉拢卢禄鹿脡脨脦麓鲁脡鹿娄拢卢脰禄潞脙脧脠脛脙脝盲陆谩鹿鹿禄炉脢媒戮脻脪禄脢脭拢漏隆拢
 
 ```{r}
-#金州勇士队员传球数据
+#陆冒脰脻脫脗脢驴露脫脭卤麓芦脟貌脢媒戮脻
 passes <- read.csv("passes.csv",header = TRUE,stringsAsFactors = TRUE)
-#金州勇士15个队员位置信息
+#陆冒脰脻脫脗脢驴15赂枚露脫脭卤脦禄脰脙脨脜脧垄
 groups <- read.csv("groups.csv",header = TRUE,stringsAsFactors = FALSE)
 head(passes)
 head(groups)
 ```
    
-###Pagerank算法实现 
+###Pagerank脣茫路篓脢碌脧脰 
 
-1. 构造邻接表
+1. 鹿鹿脭矛脕脷陆脫卤铆
     
-    即列为15个队员名字(源数据)，行为15个队员接到传球队员的名字(目标数据)，构成15*15的矩阵。通过构建adjacencyMatrix函数实现。
+    录麓脕脨脦陋15赂枚露脫脭卤脙没脳脰(脭麓脢媒戮脻)拢卢脨脨脦陋15赂枚露脫脭卤陆脫碌陆麓芦脟貌露脫脭卤碌脛脙没脳脰(脛驴卤锚脢媒戮脻)拢卢鹿鹿鲁脡15*15碌脛戮脴脮贸隆拢脥篓鹿媒鹿鹿陆篓adjacencyMatrix潞炉脢媒脢碌脧脰隆拢
     
 ```{r}
 passes$source2 <- as.numeric(as.factor(passes$PLAYER))
@@ -79,9 +79,9 @@ A <- adjacencyMatrix(passes)
 A
 ```
 
-###构建概率矩阵（转移矩阵）
+###鹿鹿陆篓赂脜脗脢戮脴脮贸拢篓脳陋脪脝戮脴脮贸拢漏
     
-    考虑阻尼系统的情况，把d设置为0.85，运用上面的公式，转换邻接表矩阵为概率矩阵。
+    驴录脗脟脳猫脛谩脧碌脥鲁碌脛脟茅驴枚拢卢掳脩d脡猫脰脙脦陋0.85拢卢脭脣脫脙脡脧脙忙碌脛鹿芦脢陆拢卢脳陋禄禄脕脷陆脫卤铆戮脴脮贸脦陋赂脜脗脢戮脴脮贸隆拢
     
 ```{r}
 dProbabilityMatrix<-function(G,d=0.85){
@@ -97,8 +97,8 @@ G <- dProbabilityMatrix(A)
 G
 ```
 
-###递归计算矩阵特征值
-    计算矩阵特征值，并排序得出队员Pagerank值排序。
+###碌脻鹿茅录脝脣茫戮脴脮贸脤脴脮梅脰碌
+    录脝脣茫戮脴脮贸脤脴脮梅脰碌拢卢虏垄脜脜脨貌碌脙鲁枚露脫脭卤Pagerank脰碌脜脜脨貌隆拢
 
 ```{r}
 eigenMatrix<-function(G,iter=100){
@@ -118,9 +118,9 @@ size$name <- as.numeric(as.factor(size$name))
 q
 ```
 
-##运用networkD3包实现可交互的D3制图
+##脭脣脫脙networkD3掳眉脢碌脧脰驴脡陆禄禄楼碌脛D3脰脝脥录
     
-    其中颜色分别代表队员不同位置(前锋或后卫),圈圈大小代表pagerank值大小，连线次数(粗细)代表传球路线及传球次数。
+    脝盲脰脨脩脮脡芦路脰卤冒麓煤卤铆露脫脭卤虏禄脥卢脦禄脰脙(脟掳路忙禄貌潞贸脦脌),脠娄脠娄麓贸脨隆麓煤卤铆pagerank脰碌麓贸脨隆拢卢脕卢脧脽麓脦脢媒(麓脰脧赂)麓煤卤铆麓芦脟貌脗路脧脽录掳麓芦脟貌麓脦脢媒隆拢
     
 ```{r}
 library(networkD3)
@@ -152,17 +152,17 @@ forceNetwork(Links = passes,
 ```
 
 
-##说明
+##脣碌脙梅
     
-    本文数据来源于YUKI KATOH的博客及其github，数据仅用于本人通过R实现PageranK算法的学习和演练，不用于任何商业宣传及其他用途，如有转载及其他用途请联系原作者本人。文章最后会给出数据出处及链接<https://github.com/yukiegosapporo/gsw_passing_network>。
+    卤戮脦脛脢媒戮脻脌麓脭麓脫脷YUKI KATOH碌脛虏漏驴脥录掳脝盲github拢卢脢媒戮脻陆枚脫脙脫脷卤戮脠脣脥篓鹿媒R脢碌脧脰PageranK脣茫路篓碌脛脩搂脧掳潞脥脩脻脕路拢卢虏禄脫脙脫脷脠脦潞脦脡脤脪碌脨没麓芦录掳脝盲脣没脫脙脥戮拢卢脠莽脫脨脳陋脭脴录掳脝盲脣没脫脙脥戮脟毛脕陋脧碌脭颅脳梅脮脽卤戮脠脣隆拢脦脛脮脗脳卯潞贸禄谩赂酶鲁枚脢媒戮脻鲁枚麓娄录掳脕麓陆脫<https://github.com/yukiegosapporo/gsw_passing_network>隆拢
     
-###参考文章
+###虏脦驴录脦脛脮脗
 
-> YUKI KATOH 的博客 <http://opiateforthemass.es/articles/analyzing-golden-state-warriors-passing-network-using-graphframes-in-spark/> 及HarryZhu对其 中文翻译<https://segmentfault.com/a/1190000004816528#articleHeader8>
+> YUKI KATOH 碌脛虏漏驴脥 <http://opiateforthemass.es/articles/analyzing-golden-state-warriors-passing-network-using-graphframes-in-spark/> 录掳HarryZhu露脭脝盲 脰脨脦脛路颅脪毛<https://segmentfault.com/a/1190000004816528#articleHeader8>
 
-> 张丹(Conan) PageRank算法R语言实现 <http://blog.fens.me/algorithm-pagerank-r/>
+> 脮脜碌陇(Conan) PageRank脣茫路篓R脫茂脩脭脢碌脧脰 <http://blog.fens.me/algorithm-pagerank-r/>
 
-> Google 的秘密 PageRank 彻底解说中文版 <http://www.t086.com/good/pagerank_cn.htm>
+> Google 碌脛脙脴脙脺 PageRank 鲁鹿碌脳陆芒脣碌脰脨脦脛掳忙 <http://www.t086.com/good/pagerank_cn.htm>
 
-> SCAN文档说明及networkD3包相关说明
+> SCAN脦脛碌碌脣碌脙梅录掳networkD3掳眉脧脿鹿脴脣碌脙梅
 

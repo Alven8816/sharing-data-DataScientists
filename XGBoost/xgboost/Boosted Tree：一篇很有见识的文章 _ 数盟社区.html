@@ -1,0 +1,403 @@
+
+<!-- saved from url=(0031)http://dataunion.org/15787.html -->
+<html style=""><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><script src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/id.php" charset="utf-8"></script><script src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/shares.php" charset="utf-8"></script><script src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/wp-emoji-release.min.js" type="text/javascript"></script></head><body><link href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/jiathis_counter.css" rel="stylesheet" type="text/css"><link href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/jiathis_share.css" rel="stylesheet" type="text/css"><iframe frameborder="0" style="position: absolute; display: none; opacity: 0;"></iframe><div class="jiathis_style" style="position: absolute; z-index: 1000000000; display: none; top: 50%; left: 50%; overflow: auto;"></div><div class="jiathis_style" style="position: absolute; z-index: 1000000000; display: none; overflow: auto;"></div><iframe frameborder="0" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/jiathis_utility.html" style="display: none;"></iframe>﻿﻿
+
+
+<title>Boosted Tree：一篇很有见识的文章 | 数盟社区</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="description" content="作者：陈天奇，毕业于上海交通大学ACM班，现就读于华盛顿大学，从事大规模机器学习研究。
+
+注解：truth4sex 
+
+编者按：本文是对开源xgboost库理论层面的介绍，在陈天奇原文《梯度提升法和Boosted Tree》的基础…">
+<meta name="keywords" content="Boosted Tree">
+<link rel="shortcut icon" href="http://dataunion.org/wp-content/themes/yzipi/images/favicon.ico">
+<link rel="stylesheet" href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/yzipc.css" type="text/css" media="all">
+<link rel="stylesheet" href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/yziipad.css" type="text/css" media="all">
+<link rel="stylesheet" href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/iphone.css" type="text/css" media="all">
+<link rel="stylesheet" href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/iphone2.css" type="text/css" media="all">
+
+<!-- All in One SEO Pack 2.2.7.6.2 by Michael Torbert of Semper Fi Web Design[32,69] -->
+<meta name="description" itemprop="description" content="作者：陈天奇，毕业于上海交通大学ACM班，现就读于华盛顿大学，从事大规模机器学习研究。 注解：truth4sex  编者按：本文是对开源xgboost库理论层面的介绍，在陈天奇原文《梯度提升法和Boosted">
+
+<meta name="keywords" itemprop="keywords" content="boosted tree,文章">
+
+<link rel="canonical" href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/Boosted Tree：一篇很有见识的文章 _ 数盟社区.html">
+<!-- /all in one seo pack -->
+<link rel="alternate" type="application/rss+xml" title="数盟社区 » Boosted Tree：一篇很有见识的文章评论Feed" href="http://dataunion.org/15787.html/feed">
+		<script type="text/javascript">
+			window._wpemojiSettings = {"baseUrl":"http:\/\/s.w.org\/images\/core\/emoji\/72x72\/","ext":".png","source":{"concatemoji":"http:\/\/dataunion.org\/wp-includes\/js\/wp-emoji-release.min.js?ver=4.4"}};
+			!function(a,b,c){function d(a){var c=b.createElement("canvas"),d=c.getContext&&c.getContext("2d");return d&&d.fillText?(d.textBaseline="top",d.font="600 32px Arial","flag"===a?(d.fillText(String.fromCharCode(55356,56806,55356,56826),0,0),c.toDataURL().length>3e3):("simple"===a?d.fillText(String.fromCharCode(55357,56835),0,0):d.fillText(String.fromCharCode(55356,57135),0,0),0!==d.getImageData(16,16,1,1).data[0])):!1}function e(a){var c=b.createElement("script");c.src=a,c.type="text/javascript",b.getElementsByTagName("head")[0].appendChild(c)}var f,g;c.supports={simple:d("simple"),flag:d("flag"),unicode8:d("unicode8")},c.DOMReady=!1,c.readyCallback=function(){c.DOMReady=!0},c.supports.simple&&c.supports.flag&&c.supports.unicode8||(g=function(){c.readyCallback()},b.addEventListener?(b.addEventListener("DOMContentLoaded",g,!1),a.addEventListener("load",g,!1)):(a.attachEvent("onload",g),b.attachEvent("onreadystatechange",function(){"complete"===b.readyState&&c.readyCallback()})),f=c.source||{},f.concatemoji?e(f.concatemoji):f.wpemoji&&f.twemoji&&(e(f.twemoji),e(f.wpemoji)))}(window,document,window._wpemojiSettings);
+		</script>
+		<style type="text/css">
+img.wp-smiley,
+img.emoji {
+	display: inline !important;
+	border: none !important;
+	box-shadow: none !important;
+	height: 1em !important;
+	width: 1em !important;
+	margin: 0 .07em !important;
+	vertical-align: -0.1em !important;
+	background: none !important;
+	padding: 0 !important;
+}
+</style>
+<link rel="stylesheet" id="crayon-css" href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/crayon.min.css" type="text/css" media="all">
+<link rel="stylesheet" id="sytle-css" href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/style.css" type="text/css" media="all">
+<link rel="stylesheet" id="es-widget-css-css" href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/es-widget.css" type="text/css" media="all">
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/jquery.js"></script>
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/jquery-migrate.min.js"></script>
+<script type="text/javascript">
+/* <![CDATA[ */
+var CrayonSyntaxSettings = {"version":"_2.7.2_beta","is_admin":"0","ajaxurl":"http:\/\/dataunion.org\/wp-admin\/admin-ajax.php","prefix":"crayon-","setting":"crayon-setting","selected":"crayon-setting-selected","changed":"crayon-setting-changed","special":"crayon-setting-special","orig_value":"data-orig-value","debug":""};
+var CrayonSyntaxStrings = {"copy":"\u4f7f\u7528 %s \u590d\u5236\uff0c\u4f7f\u7528 %s \u7c98\u8d34\u3002","minimize":"\u70b9\u51fb\u5c55\u5f00\u4ee3\u7801"};
+/* ]]> */
+</script>
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/crayon.min.js"></script>
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/html5shiv.js"></script>
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/css3-mediaqueries.js"></script>
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/selectivizr-min.js"></script>
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/jquery.1.11.1.js"></script>
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/main.js"></script>
+<script type="text/javascript">
+/* <![CDATA[ */
+var es_widget_notices = {"es_email_notice":"Please enter email address.","es_incorrect_email":"Please provide a valid email address.","es_load_more":"loading...","es_ajax_error":"Cannot create XMLHTTP instance","es_success_message":"Subscribed successfully.","es_success_notice":"You have successfully subscribed to the newsletter. You will receive a confirmation email in few minutes. Please follow the link in it to confirm your subscription. If the email takes more than 15 minutes to appear in your mailbox, please check your spam folder.","es_email_exists":"Email already exist.","es_error":"Oops.. Unexpected error occurred.","es_invalid_email":"Invalid email address.","es_try_later":"Please try after some time.","es_problem_request":"There was a problem with the request."};
+/* ]]> */
+</script>
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/es-widget.js"></script>
+<script type="text/javascript">
+/* <![CDATA[ */
+var es_widget_page_notices = {"es_email_notice":"Please enter email address.","es_incorrect_email":"Please provide a valid email address.","es_load_more":"loading...","es_ajax_error":"Cannot create XMLHTTP instance","es_success_message":"Subscribed successfully.","es_success_notice":"You have successfully subscribed to the newsletter. You will receive a confirmation email in few minutes. Please follow the link in it to confirm your subscription. If the email takes more than 15 minutes to appear in your mailbox, please check your spam folder.","es_email_exists":"Email already exist.","es_error":"Oops.. Unexpected error occurred.","es_invalid_email":"Invalid email address.","es_try_later":"Please try after some time.","es_problem_request":"There was a problem with the request."};
+/* ]]> */
+</script>
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/es-widget-page.js"></script>
+<link rel="https://api.w.org/" href="http://dataunion.org/wp-json/">
+<link rel="prev" title="22本数据分析、挖掘的好书推荐—绝对干货，不看后悔" href="http://dataunion.org/15758.html">
+<link rel="next" title="让你秒懂什么是 SEM、EDM、CPS、CPA、ROI、SEO……" href="http://dataunion.org/15779.html">
+<link rel="shortlink" href="http://dataunion.org/?p=15787">
+<link rel="alternate" type="application/json+oembed" href="http://dataunion.org/wp-json/oembed/1.0/embed?url=http%3A%2F%2Fdataunion.org%2F15787.html">
+<link rel="alternate" type="text/xml+oembed" href="http://dataunion.org/wp-json/oembed/1.0/embed?url=http%3A%2F%2Fdataunion.org%2F15787.html&format=xml">
+
+
+
+<!--
+<div align="center">
+<a href="http://www.cloudconnectevent.cn/" target="_blank"><img src="http://dataunion.org/wp-content/uploads/2016/08/cce.jpg"/ ></a>
+</div>
+-->
+
+<header id="header-web">
+  <div class="header-main">
+    <hgroup class="logo">
+      <h1><a href="http://dataunion.org/" title="数盟社区" rel="home"><img src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/logo.png" alt="数盟社区"></a></h1>
+    </hgroup>
+    <!--logo-->
+    <nav class="header-nav">
+      <ul id="menu-%e4%b8%bb%e8%8f%9c%e5%8d%95" class="menu"><li id="menu-item-71" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-71"><a title="events" href="http://dataunion.org/category/events">活动</a>
+<ul class="sub-menu">
+	<li id="menu-item-22457" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-22457"><a href="http://dataunion.org/2016timeline">2016档期</a></li>	<li id="menu-item-22459" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-22459"><a href="http://dataunion.org/category/parterc">合作会议</a></li></ul>
+</li><li id="menu-item-20869" class="menu-item menu-item-type-taxonomy menu-item-object-category current-post-ancestor current-menu-parent current-post-parent menu-item-has-children menu-item-20869"><a title="articles" href="http://dataunion.org/category/tech">文章</a>
+<ul class="sub-menu">
+	<li id="menu-item-20867" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-20867"><a title="base" href="http://dataunion.org/category/tech/base">基础架构</a></li>	<li id="menu-item-3302" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-3302"><a title="ai" href="http://dataunion.org/category/tech/ai">人工智能</a></li>	<li id="menu-item-3303" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-3303"><a title="analysis" href="http://dataunion.org/category/tech/analysis">数据分析</a></li>	<li id="menu-item-21920" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-21920"><a href="http://dataunion.org/category/tech/dm">数据挖掘</a></li>	<li id="menu-item-3314" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-3314"><a title="viz" href="http://dataunion.org/category/tech/viz">可视化</a></li>	<li id="menu-item-3305" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-3305"><a title="devl" href="http://dataunion.org/category/tech/devl">编程语言</a></li></ul>
+</li><li id="menu-item-20876" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-20876"><a href="http://dataunion.org/category/industry">行业</a>
+<ul class="sub-menu">
+	<li id="menu-item-16328" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-16328"><a title="case" href="http://dataunion.org/category/industry/case">行业应用</a></li>	<li id="menu-item-2112" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-2112"><a title="demo" href="http://dataunion.org/category/industry/demo">Demo展示</a></li>	<li id="menu-item-21562" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-21562"><a href="http://dataunion.org/category/industry/news">行业资讯</a></li></ul>
+</li><li id="menu-item-311" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-311"><a title="sources" href="http://dataunion.org/category/sources">资源</a></li><li id="menu-item-20870" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-20870"><a title="book" href="http://dataunion.org/category/books">图书</a></li><li id="menu-item-21363" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-21363"><a href="http://dataunion.org/category/training">课程</a></li><li id="menu-item-21853" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-has-children menu-item-21853"><a href="http://dataunion.org/category/jobs">职位</a>
+<ul class="sub-menu">
+	<li id="menu-item-22050" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-22050"><a href="http://dataunion.org/category/career">职业规划</a></li></ul>
+</li></ul>    </nav>
+    <!--header-nav-->
+  </div>
+</header>
+<!--header-web-->
+<div id="main">
+<div id="soutab">
+  <form method="get" class="search" action="http://dataunion.org/">
+    <input class="text" type="text" name="s" placeholder="搜索一下">
+    <input class="butto" value="" type="submit">
+  </form>
+</div>  <div id="container">
+  <nav id="mbx">当前位置：<a href="http://dataunion.org/">
+ 首页
+  </a> &gt;
+  <a href="http://dataunion.org/category/tech">文章</a> &gt;  正文</nav>
+<!--mbx-->
+        <article class="content">
+      <header class="contenttitle" align="centre"> 
+          
+          <div class="mscc">
+          <h1 class="mscctitle"> <a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/Boosted Tree：一篇很有见识的文章 _ 数盟社区.html">
+            Boosted Tree：一篇很有见识的文章            </a> </h1>
+          <address class="msccaddress ">
+		  <em>
+           11,232 次阅读 -</em>
+          <a href="http://dataunion.org/category/tech" rel="category tag">文章</a>          </address>
+      </div></header>
+            <div class="content-text">
+        <p><strong>作者：陈天奇，毕业于上海交通大学ACM班，现就读于华盛顿大学，从事大规模机器学习研究。</strong></p>
+<p><strong>注解：truth4sex&nbsp;</strong></p>
+<p><em><strong>编者按：本文是对开源xgboost库理论层面的介绍，在陈天奇原文《梯度提升法和Boosted Tree》的基础上，做了如下注解：</strong></em><em><strong>1）章节划分；2）注解和参考链接（以蓝色和红色字体标注）。备注：图片可点击查看清晰版。</strong></em></p>
+<p><strong>1. 前言</strong><br>
+应 @龙星镖局 &nbsp;兄邀请写这篇文章。作为一个非常有效的机器学习方法，Boosted Tree是数据挖掘和机器学习中最常用的算法之一。因为它效果好，对于输入要求不敏感，往往是从统计学家到数据科学家必备的工具之一，它同时也是kaggle比赛冠军选手最常用的工具。最后，因为它的效果好，计算复杂度不高，也在工业界中有大量的应用。</p>
+<p><strong>2. Boosted Tree的若干同义词</strong><br>
+说到这里可能有人会问，为什么我没有听过这个名字。这是因为Boosted Tree有各种马甲，比如GBDT, GBRT (gradient boosted regression tree)，MART<span id="MathJax-Element-1-Frame" class="MathJax"><span id="MathJax-Span-1" class="math"><span id="MathJax-Span-2" class="mrow"><span id="MathJax-Span-3" class="msubsup"><span id="MathJax-Span-4" class="mi"></span><span id="MathJax-Span-5" class="mn">1</span></span></span></span></span>，LambdaMART也是一种boosted tree的变种。网上有很多介绍Boosted tree的资料，不过大部分都是基于Friedman的最早一篇文章Greedy Function Approximation: A Gradient Boosting Machine的翻译。个人觉得这不是最好最一般地介绍boosted tree的方式。而网上除了这个角度之外的介绍并不多。这篇文章是我个人对于boosted tree和gradient boosting 类算法的总结，其中很多材料来自于我TA UW机器学习时的一份讲义<span id="MathJax-Element-2-Frame" class="MathJax"><span id="MathJax-Span-6" class="math"><span id="MathJax-Span-7" class="mrow"><span id="MathJax-Span-8" class="msubsup"><span id="MathJax-Span-9" class="mi"></span><span id="MathJax-Span-10" class="mn">2</span></span></span></span></span>。</p>
+<p><strong>3. 有监督学习算法的逻辑组成</strong><br>
+要讲boosted tree，要先从有监督学习讲起。在有监督学习里面有几个逻辑上的重要组成部件<span id="MathJax-Element-3-Frame" class="MathJax"><span id="MathJax-Span-11" class="math"><span id="MathJax-Span-12" class="mrow"><span id="MathJax-Span-13" class="msubsup"><span id="MathJax-Span-14" class="mi"></span><span id="MathJax-Span-15" class="mn">3</span></span></span></span></span>，初略地分可以分为：模型，参数 和 目标函数。</p>
+<p><em>i. 模型和参数</em><br>
+模型指给定输入<span id="MathJax-Element-4-Frame" class="MathJax"><span id="MathJax-Span-16" class="math"><span id="MathJax-Span-17" class="mrow"><span id="MathJax-Span-18" class="msubsup"><span id="MathJax-Span-19" class="mi">x</span><span id="MathJax-Span-20" class="mi">i</span></span></span></span></span>如何去预测 输出 <span id="MathJax-Element-5-Frame" class="MathJax"><span id="MathJax-Span-21" class="math"><span id="MathJax-Span-22" class="mrow"><span id="MathJax-Span-23" class="msubsup"><span id="MathJax-Span-24" class="mi">y</span><span id="MathJax-Span-25" class="mi">i</span></span></span></span></span>。我们比较常见的模型如线性模型（包括线性回归和logistic regression）采用了线性叠加的方式进行预测<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423160902.png"><img class="alignnone size-full wp-image-15788" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423160902.png" alt="QQ截图20150423160902" width="134" height="34"></a>。其实这里的预测<span id="MathJax-Element-7-Frame" class="MathJax"><span id="MathJax-Span-48" class="math"><span id="MathJax-Span-49" class="mrow"><span id="MathJax-Span-50" class="mi">y</span></span></span></span>可以有不同的解释，比如我们可以用它来作为回归目标的输出，或者进行sigmoid 变换得到概率，或者作为排序的指标等。而一个线性模型根据<span id="MathJax-Element-8-Frame" class="MathJax"><span id="MathJax-Span-51" class="math"><span id="MathJax-Span-52" class="mrow"><span id="MathJax-Span-53" class="mi">y</span></span></span></span>的解释不同（以及设计对应的目标函数）用到回归，分类或排序等场景。参数指我们需要学习的东西，在线性模型中，参数指我们的线性系数<span id="MathJax-Element-9-Frame" class="MathJax"><span id="MathJax-Span-54" class="math"><span id="MathJax-Span-55" class="mrow"><span id="MathJax-Span-56" class="mi">w</span></span></span></span>。</p>
+<p><em>ii. 目标函数：损失 + 正则</em><br>
+模型和参数本身指定了给定输入我们如何做预测，但是没有告诉我们如何去寻找一个比较好的参数，这个时候就需要目标函数登场了。一般的目标函数包含下面两项</p>
+<p><a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/115.png"><img class="aligncenter wp-image-446 size-full" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/115.png" alt="1" width="1307" height="333"></a></p>
+<p>常见的误差函数有<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423161413.png"><img class="alignnone size-full wp-image-15791" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423161413.png" alt="QQ截图20150423161413" width="145" height="31"></a>比如平方误差<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423162632.png"><img class="alignnone size-full wp-image-15792" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423162632.png" alt="QQ截图20150423162632" width="187" height="34"></a>，logistic误差函数（<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423162837.png"><img class="alignnone size-full wp-image-15793" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423162837.png" alt="QQ截图20150423162837" width="439" height="28" srcset="http://dataunion.org/wp-content/uploads/2015/04/QQ截图20150423162837-300x19.png 300w, http://dataunion.org/wp-content/uploads/2015/04/QQ截图20150423162837.png 439w" sizes="(max-width: 439px) 100vw, 439px"></a>等。而对于线性模型常见的正则化项有<span id="MathJax-Element-13-Frame" class="MathJax"><span id="MathJax-Span-174" class="math"><span id="MathJax-Span-175" class="mrow"><span id="MathJax-Span-176" class="mi">L</span><span id="MathJax-Span-177" class="mn">2</span></span></span></span>正则和<span id="MathJax-Element-14-Frame" class="MathJax"><span id="MathJax-Span-178" class="math"><span id="MathJax-Span-179" class="mrow"><span id="MathJax-Span-180" class="mi">L</span><span id="MathJax-Span-181" class="mn">1</span></span></span></span>正则。这样目标函数的设计来自于统计学习里面的一个重要概念叫做Bias-variance tradeoff<span id="MathJax-Element-15-Frame" class="MathJax"><span id="MathJax-Span-182" class="math"><span id="MathJax-Span-183" class="mrow"><span id="MathJax-Span-184" class="msubsup"><span id="MathJax-Span-185" class="mi"></span><span id="MathJax-Span-186" class="mn">4</span></span></span></span></span>。比较感性的理解，Bias可以理解为假设我们有无限多数据的时候，可以训练出最好的模型所拿到的误差。而Variance是因为我们只有有限数据，其中随机性带来的误差。目标中误差函数鼓励我们的模型尽量去拟合训练数据，这样相对来说最后的模型会有比较少的 bias。而正则化项则鼓励更加简单的模型。因为当模型简单之后，有限数据拟合出来结果的随机性比较小，不容易过拟合，使得最后模型的预测更加稳定。</p>
+<p><em>iii. 优化算法</em><br>
+讲了这么多有监督学习的基本概念，为什么要讲这些呢？ 是因为这几部分包含了机器学习的主要成分，也是机器学习工具设计中划分模块比较有效的办法。其实这几部分之外，还有一个优化算法，就是给定目标函数之后怎么学的问题。之所以我没有讲优化算法，是因为这是大家往往比较熟悉的“机器学习的部分”。而有时候我们往往只知道“优化算法”，而没有仔细考虑目标函数的设计的问题，比较常见的例子如决策树的学习，大家知道的算法是每一步去优化gini entropy，然后剪枝，但是没有考虑到后面的目标是什么。</p>
+<p><strong>4. Boosted Tree</strong><br>
+<em>i. 基学习器：分类和回归树（CART）</em><br>
+话题回到boosted tree，我们也是从这几个方面开始讲，首先讲模型。Boosted tree 最基本的组成部分叫做回归树(regression tree)，也叫做CART<span id="MathJax-Element-16-Frame" class="MathJax"><span id="MathJax-Span-187" class="math"><span id="MathJax-Span-188" class="mrow"><span id="MathJax-Span-189" class="msubsup"><span id="MathJax-Span-190" class="mi"></span><span id="MathJax-Span-191" class="mn">5</span></span></span></span></span>。</p>
+<p><a href="http://www.52cs.org/wp-content/uploads/2015/04/2.png"><img class="aligncenter wp-image-447 " src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/2-e1429721885926.png" alt="2" width="490" height="192"></a></p>
+<p>上面就是一个CART的例子。CART会把输入根据输入的属性分配到各个叶子节点，而每个叶子节点上面都会对应一个实数分数。上面的例子是一个预测一个人是否会喜欢电脑游戏的 CART，你可以把叶子的分数理解为有多可能这个人喜欢电脑游戏。有人可能会问它和decision tree的关系，其实我们可以简单地把它理解为decision tree的一个扩展。从简单的类标到分数之后，我们可以做很多事情，如概率预测，排序。</p>
+<p><em>ii. Tree Ensemble</em><br>
+一个CART往往过于简单无法有效地预测，因此一个更加强力的模型叫做tree ensemble。</p>
+<p><a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/image21.png"><img class="alignnone wp-image-491 " src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/image21.png" alt="image2" width="668" height="331"></a></p>
+<p>在上面的例子中，我们用两棵树来进行预测。我们对于每个样本的预测结果就是每棵树预测分数的和。到这里，我们的模型就介绍完毕了。现在问题来了，我们常见的随机森林和boosted tree和tree ensemble有什么关系呢？如果你仔细的思考，你会发现RF和boosted tree的模型都是tree ensemble，只是构造（学习）模型参数的方法不同。第二个问题：在这个模型中的“参数”是什么。在tree ensemble中，参数对应了树的结构，以及每个叶子节点上面的预测分数。</p>
+<p>最后一个问题当然是如何学习这些参数。在这一部分，答案可能千奇百怪，但是最标准的答案始终是一个：定义合理的目标函数，然后去尝试优化这个目标函数。在这里我要多说一句，因为决策树学习往往充满了heuristic。 如先优化吉尼系数，然后再剪枝啦，限制最大深度，等等。其实这些heuristic的背后往往隐含了一个目标函数，而理解目标函数本身也有利于我们设计学习算法，这个会在后面具体展开。<br>
+对于tree ensemble，我们可以比较严格的把我们的模型写成是：</p>
+<p><a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163114.png"><img class="alignnone size-full wp-image-15794" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163114.png" alt="QQ截图20150423163114" width="300" height="53"></a></p>
+<p>其中每个<span id="MathJax-Element-18-Frame" class="MathJax"><span id="MathJax-Span-227" class="math"><span id="MathJax-Span-228" class="mrow"><span id="MathJax-Span-229" class="mi">f</span></span></span></span>是一个在函数空间<span id="MathJax-Element-19-Frame" class="MathJax"><span id="MathJax-Span-230" class="math"><span id="MathJax-Span-231" class="mrow"><span id="MathJax-Span-232" class="msubsup"><span id="MathJax-Span-233" class="mi"></span><span id="MathJax-Span-234" class="mn">6</span></span></span></span></span>(<span id="MathJax-Element-20-Frame" class="MathJax"><span id="MathJax-Span-235" class="math"><span id="MathJax-Span-236" class="mrow"><span id="MathJax-Span-237" class="texatom"><span id="MathJax-Span-238" class="mrow"><span id="MathJax-Span-239" class="mi">F</span></span></span></span></span></span>)里面的函数，而<span id="MathJax-Element-21-Frame" class="MathJax"><span id="MathJax-Span-240" class="math"><span id="MathJax-Span-241" class="mrow"><span id="MathJax-Span-242" class="texatom"><span id="MathJax-Span-243" class="mrow"><span id="MathJax-Span-244" class="mi">F</span></span></span></span></span></span>对应了所有regression tree的集合。我们设计的目标函数也需要遵循前面的主要原则，包含两部分</p>
+<p><a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163152.png"><img class="alignnone size-full wp-image-15795" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163152.png" alt="QQ截图20150423163152" width="371" height="59" srcset="http://dataunion.org/wp-content/uploads/2015/04/QQ截图20150423163152-300x48.png 300w, http://dataunion.org/wp-content/uploads/2015/04/QQ截图20150423163152.png 371w" sizes="(max-width: 371px) 100vw, 371px"></a></p>
+<p><em>iii. 模型学习：additive training</em><br>
+其中第一部分是训练误差，也就是大家相对比较熟悉的如平方误差, logistic loss等。而第二部分是每棵树的复杂度的和。这个在后面会继续讲到。因为现在我们的参数可以认为是在一个函数空间里面，我们不能采用传统的如SGD之类的算法来学习我们的模型，因此我们会采用一种叫做additive training的方式（另外，在我个人的理解里面<span id="MathJax-Element-23-Frame" class="MathJax"><span id="MathJax-Span-287" class="math"><span id="MathJax-Span-288" class="mrow"><span id="MathJax-Span-289" class="msubsup"><span id="MathJax-Span-290" class="mi"></span><span id="MathJax-Span-291" class="mn">7</span></span></span></span></span>，boosting就是指additive training的意思）。每一次保留原来的模型不变，加入一个新的函数$f$到我们的模型中。</p>
+<p><a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/410.png"><img class="aligncenter wp-image-449 size-full" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/410.png" alt="4" width="1083" height="340"></a></p>
+<p>现在还剩下一个问题，我们如何选择每一轮加入什么<span id="MathJax-Element-24-Frame" class="MathJax"><span id="MathJax-Span-292" class="math"><span id="MathJax-Span-293" class="mrow"><span id="MathJax-Span-294" class="mi">f</span></span></span></span>呢？答案是非常直接的，选取一个<span id="MathJax-Element-25-Frame" class="MathJax"><span id="MathJax-Span-295" class="math"><span id="MathJax-Span-296" class="mrow"><span id="MathJax-Span-297" class="mi">f</span></span></span></span>来使得我们的目标函数尽量最大地降低<span id="MathJax-Element-26-Frame" class="MathJax"><span id="MathJax-Span-298" class="math"><span id="MathJax-Span-299" class="mrow"><span id="MathJax-Span-300" class="msubsup"><span id="MathJax-Span-301" class="mi"></span><span id="MathJax-Span-302" class="mn">8</span></span></span></span></span>。<br>
+<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/510.png"><img class="aligncenter wp-image-450 size-full" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/510.png" alt="5" width="990" height="193"></a><br>
+这个公式可能有些过于抽象，我们可以考虑当<span id="MathJax-Element-27-Frame" class="MathJax"><span id="MathJax-Span-303" class="math"><span id="MathJax-Span-304" class="mrow"><span id="MathJax-Span-305" class="mi">l</span></span></span></span>是平方误差的情况。这个时候我们的目标可以被写成下面这样的二次函数<span id="MathJax-Element-28-Frame" class="MathJax"><span id="MathJax-Span-306" class="math"><span id="MathJax-Span-307" class="mrow"><span id="MathJax-Span-308" class="msubsup"><span id="MathJax-Span-309" class="mi"></span><span id="MathJax-Span-310" class="mn">9</span></span></span></span></span>：<br>
+<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/61.png"><img class="aligncenter wp-image-451 size-full" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/61.png" alt="6" width="959" height="198"></a><br>
+更加一般的，对于不是平方误差的情况，我们会采用如下的泰勒展开近似来定义一个近似的目标函数，方便我们进行这一步的计算。<br>
+<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/72.png"><img class="aligncenter wp-image-452 size-full" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/72.png" alt="7" width="1154" height="356"></a><br>
+当我们把常数项移除之后，我们会发现如下一个比较统一的目标函数。这一个目标函数有一个非常明显的特点，它只依赖于每个数据点的在误差函数上的一阶导数和二阶导数<span id="MathJax-Element-29-Frame" class="MathJax"><span id="MathJax-Span-311" class="math"><span id="MathJax-Span-312" class="mrow"><span id="MathJax-Span-313" class="msubsup"><span id="MathJax-Span-314" class="mi"></span><span id="MathJax-Span-315" class="texatom"><span id="MathJax-Span-316" class="mrow"><span id="MathJax-Span-317" class="mn">10</span></span></span></span></span></span></span>。有人可能会问，这个材料似乎比我们之前学过的决策树学习难懂。为什么要花这么多力气来做推导呢？<br>
+<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/82.png"><img class="aligncenter wp-image-453 size-full" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/82.png" alt="8" width="893" height="131"></a><br>
+因为这样做使得我们可以很清楚地理解整个目标是什么，并且一步一步推导出如何进行树的学习。这一个抽象的形式对于实现机器学习工具也是非常有帮助的。传统的GBDT可能大家可以理解如优化平法<span id="MathJax-Element-30-Frame" class="MathJax"><span id="MathJax-Span-318" class="math"><span id="MathJax-Span-319" class="mrow"><span id="MathJax-Span-320" class="msubsup"><span id="MathJax-Span-321" class="mi"></span><span id="MathJax-Span-322" class="mi">a</span></span></span></span></span>残差，但是这样一个形式包含可所有可以求导的目标函数。也就是说有了这个形式，我们写出来的代码可以用来求解包括回归，分类和排序的各种问题，<strong>正式的推导可以使得机器学习的工具更加一般</strong>。</p>
+<p><em>iv. 树的复杂度</em><br>
+到目前为止我们讨论了目标函数中训练误差的部分。接下来我们讨论如何定义树的复杂度。我们先对于f的定义做一下细化，把树拆分成结构部分<span id="MathJax-Element-31-Frame" class="MathJax"><span id="MathJax-Span-323" class="math"><span id="MathJax-Span-324" class="mrow"><span id="MathJax-Span-325" class="mi">q</span></span></span></span>和叶子权重部分<span id="MathJax-Element-32-Frame" class="MathJax"><span id="MathJax-Span-326" class="math"><span id="MathJax-Span-327" class="mrow"><span id="MathJax-Span-328" class="mi">w</span></span></span></span>。下图是一个具体的例子。结构函数<span id="MathJax-Element-33-Frame" class="MathJax"><span id="MathJax-Span-329" class="math"><span id="MathJax-Span-330" class="mrow"><span id="MathJax-Span-331" class="mi">q</span></span></span></span>把输入映射到叶子的索引号上面去，而<span id="MathJax-Element-34-Frame" class="MathJax"><span id="MathJax-Span-332" class="math"><span id="MathJax-Span-333" class="mrow"><span id="MathJax-Span-334" class="mi">w</span></span></span></span>给定了每个索引号对应的叶子分数是什么。<br>
+<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/94.png"><img class="aligncenter wp-image-454 size-full" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/94.png" alt="9" width="945" height="532"></a><br>
+当我们给定了如上定义之后，我们可以定义一棵树的复杂度如下。这个复杂度包含了一棵树里面节点的个数，以及每个树叶子节点上面输出分数的$L2$模平方。当然这不是唯一的一种定义方式，不过这一定义方式学习出的树效果一般都比较不错。下图还给出了复杂度计算的一个例子。</p>
+<p><a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/102.png"><img class="aligncenter wp-image-455 " src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/102.png" alt="10" width="891" height="545"></a></p>
+<p><em>v. 关键步骤</em><br>
+接下来是最关键的一步<span id="MathJax-Element-35-Frame" class="MathJax"><span id="MathJax-Span-335" class="math"><span id="MathJax-Span-336" class="mrow"><span id="MathJax-Span-337" class="msubsup"><span id="MathJax-Span-338" class="mi"></span><span id="MathJax-Span-339" class="texatom"><span id="MathJax-Span-340" class="mrow"><span id="MathJax-Span-341" class="mn">11</span></span></span></span></span></span></span>，在这种新的定义下，我们可以把目标函数进行如下改写，其中I被定义为每个叶子上面样本集合 <span id="MathJax-Element-36-Frame" class="MathJax"><span id="MathJax-Span-342" class="math"><span id="MathJax-Span-343" class="mrow"><span id="MathJax-Span-344" class="msubsup"><span id="MathJax-Span-345" class="mi">I</span><span id="MathJax-Span-346" class="mi">j</span></span></span></span></span> = { <span id="MathJax-Element-37-Frame" class="MathJax"><span id="MathJax-Span-347" class="math"><span id="MathJax-Span-348" class="mrow"><span id="MathJax-Span-349" class="mi">i</span><span id="MathJax-Span-350" class="texatom"><span id="MathJax-Span-351" class="mrow"><span id="MathJax-Span-352" class="mo">|</span></span></span><span id="MathJax-Span-353" class="mi">q</span><span id="MathJax-Span-354" class="mo">(</span><span id="MathJax-Span-355" class="msubsup"><span id="MathJax-Span-356" class="mi">x</span><span id="MathJax-Span-357" class="mi">i</span></span><span id="MathJax-Span-358" class="mo">)</span><span id="MathJax-Span-359" class="mo">=</span><span id="MathJax-Span-360" class="mi">j</span></span></span></span>}</p>
+<p><a href="http://dataunion.org/wp-content/uploads/2015/04/a.png"><img class="alignnone size-large wp-image-15796" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/a-1024x199.png" alt="a" width="1024" height="199" srcset="http://dataunion.org/wp-content/uploads/2015/04/a-300x58.png 300w, http://dataunion.org/wp-content/uploads/2015/04/a-1024x199.png 1024w" sizes="(max-width: 1024px) 100vw, 1024px"></a></p>
+<p>这一个目标包含了<span id="MathJax-Element-38-Frame" class="MathJax"><span id="MathJax-Span-361" class="math"><span id="MathJax-Span-362" class="mrow"><span id="MathJax-Span-363" class="mi">T</span></span></span></span>个相互独立的单变量二次函数。我们可以定义</p>
+<p><a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163401.png"><img class="alignnone size-full wp-image-15797" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163401.png" alt="QQ截图20150423163401" width="306" height="47" srcset="http://dataunion.org/wp-content/uploads/2015/04/QQ截图20150423163401-300x46.png 300w, http://dataunion.org/wp-content/uploads/2015/04/QQ截图20150423163401.png 306w" sizes="(max-width: 306px) 100vw, 306px"></a></p>
+<p>那么这个目标函数可以进一步改写成如下的形式，假设我们已经知道树的结构<span id="MathJax-Element-40-Frame" class="MathJax"><span id="MathJax-Span-399" class="math"><span id="MathJax-Span-400" class="mrow"><span id="MathJax-Span-401" class="mi">q</span></span></span></span>，我们可以通过这个目标函数来求解出最好的<span id="MathJax-Element-41-Frame" class="MathJax"><span id="MathJax-Span-402" class="math"><span id="MathJax-Span-403" class="mrow"><span id="MathJax-Span-404" class="mi">w</span></span></span></span>，以及最好的<span id="MathJax-Element-42-Frame" class="MathJax"><span id="MathJax-Span-405" class="math"><span id="MathJax-Span-406" class="mrow"><span id="MathJax-Span-407" class="mi">w</span></span></span></span>对应的目标函数最大的增益</p>
+<p><a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163423.png"><img class="alignnone size-full wp-image-15798" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163423.png" alt="QQ截图20150423163423" width="567" height="112" srcset="http://dataunion.org/wp-content/uploads/2015/04/QQ截图20150423163423-300x59.png 300w, http://dataunion.org/wp-content/uploads/2015/04/QQ截图20150423163423.png 567w" sizes="(max-width: 567px) 100vw, 567px"></a></p>
+<p>这两个的结果对应如下，左边是最好的<span id="MathJax-Element-44-Frame" class="MathJax"><span id="MathJax-Span-510" class="math"><span id="MathJax-Span-511" class="mrow"><span id="MathJax-Span-512" class="mi">w</span></span></span></span>，右边是这个<span id="MathJax-Element-45-Frame" class="MathJax"><span id="MathJax-Span-513" class="math"><span id="MathJax-Span-514" class="mrow"><span id="MathJax-Span-515" class="mi">w</span></span></span></span>对应的目标函数的值。到这里大家可能会觉得这个推导略复杂。其实这里只涉及到了如何求一个一维二次函数的最小值的问题<span id="MathJax-Element-46-Frame" class="MathJax"><span id="MathJax-Span-516" class="math"><span id="MathJax-Span-517" class="mrow"><span id="MathJax-Span-518" class="msubsup"><span id="MathJax-Span-519" class="mi"></span><span id="MathJax-Span-520" class="texatom"><span id="MathJax-Span-521" class="mrow"><span id="MathJax-Span-522" class="mn">12</span></span></span></span></span></span></span>。如果觉得没有理解不妨再仔细琢磨一下</p>
+<p><a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163446.png"><img class="alignnone size-full wp-image-15799" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163446.png" alt="QQ截图20150423163446" width="481" height="95" srcset="http://dataunion.org/wp-content/uploads/2015/04/QQ截图20150423163446-300x59.png 300w, http://dataunion.org/wp-content/uploads/2015/04/QQ截图20150423163446.png 481w" sizes="(max-width: 481px) 100vw, 481px"></a></p>
+<p><em>vi. 打分函数计算举例</em><br>
+Obj代表了当我们指定一个树的结构的时候，我们在目标上面最多减少多少。我们可以把它叫做结构分数(structure score)。你可以认为这个就是类似吉尼系数一样更加一般的对于树结构进行打分的函数。下面是一个具体的打分函数计算的例子<br>
+<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/143.png"><img class="aligncenter wp-image-481 size-full" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/143.png" alt="1" width="869" height="426"></a></p>
+<p><em>vii. 枚举所有不同树结构的贪心法</em><br>
+所以我们的算法也很简单，我们不断地枚举不同树的结构，利用这个打分函数来寻找出一个最优结构的树，加入到我们的模型中，再重复这样的操作。不过枚举所有树结构这个操作不太可行，所以常用的方法是贪心法，每一次尝试去对已有的叶子加入一个分割。对于一个具体的分割方案，我们可以获得的增益可以由如下公式计算<br>
+<a href="http://www.52cs.org/wp-content/uploads/2015/04/12.png"><br>
+</a><a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/image1.png"><img class="alignnone wp-image-489 size-full" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/image1.png" alt="image1" width="626" height="156"></a><br>
+对于每次扩展，我们还是要枚举所有可能的分割方案，如何高效地枚举所有的分割呢？我假设我们要枚举所有 <span id="MathJax-Element-48-Frame" class="MathJax"><span id="MathJax-Span-572" class="math"><span id="MathJax-Span-573" class="mrow"><span id="MathJax-Span-574" class="mi">x</span><span id="MathJax-Span-575" class="mo">&lt;</span><span id="MathJax-Span-576" class="mi">a</span></span></span></span> 这样的条件，对于某个特定的分割<span id="MathJax-Element-49-Frame" class="MathJax"><span id="MathJax-Span-577" class="math"><span id="MathJax-Span-578" class="mrow"><span id="MathJax-Span-579" class="mi">a</span></span></span></span>我们要计算<span id="MathJax-Element-50-Frame" class="MathJax"><span id="MathJax-Span-580" class="math"><span id="MathJax-Span-581" class="mrow"><span id="MathJax-Span-582" class="mi">a</span></span></span></span>左边和右边的导数和。<br>
+<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/133.png"><img class="aligncenter wp-image-459 size-full" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/133.png" alt="13" width="772" height="289"></a><br>
+我们可以发现对于所有的<span id="MathJax-Element-51-Frame" class="MathJax"><span id="MathJax-Span-583" class="math"><span id="MathJax-Span-584" class="mrow"><span id="MathJax-Span-585" class="mi">a</span></span></span></span>，我们只要做一遍从左到右的扫描就可以枚举出所有分割的梯度和<span id="MathJax-Element-52-Frame" class="MathJax"><span id="MathJax-Span-586" class="math"><span id="MathJax-Span-587" class="mrow"><span id="MathJax-Span-588" class="msubsup"><span id="MathJax-Span-589" class="mi">G</span><span id="MathJax-Span-590" class="mi">L</span></span></span></span></span>和<span id="MathJax-Element-53-Frame" class="MathJax"><span id="MathJax-Span-591" class="math"><span id="MathJax-Span-592" class="mrow"><span id="MathJax-Span-593" class="msubsup"><span id="MathJax-Span-594" class="mi">G</span><span id="MathJax-Span-595" class="mi">R</span></span></span></span></span>。然后用上面的公式计算每个分割方案的分数就可以了。</p>
+<p>观察这个目标函数，大家会发现第二个值得注意的事情就是引入分割不一定会使得情况变好，因为我们有一个引入新叶子的惩罚项。优化这个目标对应了树的剪枝， 当引入的分割带来的增益小于一个阀值的时候，我们可以剪掉这个分割。大家可以发现，当我们正式地推导目标的时候，像计算分数和剪枝这样的策略都会自然地出现，而不再是一种因为heuristic而进行的操作了。</p>
+<p>讲到这里文章进入了尾声，虽然有些长，希望对大家有所帮助，这篇文章介绍了如何通过目标函数优化的方法比较严格地推导出boosted tree的学习。因为有这样一般的推导，得到的算法可以直接应用到回归，分类排序等各个应用场景中去。</p>
+<p><strong>5. 尾声：xgboost</strong><br>
+这篇文章讲的所有推导和技术都指导了xgboost https://github.com/dmlc/xgboost 的设计。xgboost是大规模并行boosted tree的工具，它是目前最快最好的开源boosted tree工具包，比常见的工具包快10倍以上。在数据科学方面，有大量kaggle选手选用它进行数据挖掘比赛，其中包括两个以上kaggle比赛的夺冠方案。在工业界规模方面，xgboost的分布式版本有广泛的可移植性，支持在YARN, MPI, Sungrid Engine等各个平台上面运行，并且保留了单机并行版本的各种优化，使得它可以很好地解决于工业界规模的问题。有兴趣的同学可以尝试使用一下，也欢迎贡献代码。</p>
+<p>—————————–</p>
+<p><em><strong>注解和链接</strong></em>：</p>
+<ul>
+<li><span id="MathJax-Element-54-Frame" class="MathJax"><span id="MathJax-Span-596" class="math"><span id="MathJax-Span-597" class="mrow"><span id="MathJax-Span-598" class="msubsup"><span id="MathJax-Span-599" class="mi"></span><span id="MathJax-Span-600" class="mn">1</span></span></span></span></span>:&nbsp;Multiple Additive Regression Trees, Jerry Friedman, KDD 2002 Innovation Award 创新奖 http://www.sigkdd.org/node/362</li>
+<li><span id="MathJax-Element-55-Frame" class="MathJax"><span id="MathJax-Span-601" class="math"><span id="MathJax-Span-602" class="mrow"><span id="MathJax-Span-603" class="msubsup"><span id="MathJax-Span-604" class="mi"></span><span id="MathJax-Span-605" class="mn">2</span></span></span></span></span>:&nbsp;Introduction to Boosted Trees, Tianqi Chen<br>
+, 2014 http://homes.cs.washington.edu/~tqchen/pdf/BoostedTree.pdf</li>
+<li><span id="MathJax-Element-56-Frame" class="MathJax"><span id="MathJax-Span-606" class="math"><span id="MathJax-Span-607" class="mrow"><span id="MathJax-Span-608" class="msubsup"><span id="MathJax-Span-609" class="mi"></span><span id="MathJax-Span-610" class="mn">3</span></span></span></span></span>:&nbsp;<em>Principles of Data Mining</em>, David Hand et al,2001. Chapter 1.5 <em>Components of Data Mining Algorithms</em>, 将数据挖掘算法解构为四个组件：1）模型结构（函数形式，如线性模型），2）评分函数（评估模型拟合数据的质量，如似然函数，误差平方和，误分类率），3）优化和搜索方法（评分函数的优化和模型参数的求解），4）数据管理策略（优化和搜索时对数据的高效访问）。</li>
+<li><span id="MathJax-Element-57-Frame" class="MathJax"><span id="MathJax-Span-611" class="math"><span id="MathJax-Span-612" class="mrow"><span id="MathJax-Span-613" class="msubsup"><span id="MathJax-Span-614" class="mi"></span><span id="MathJax-Span-615" class="mn">4</span></span></span></span></span>:&nbsp;在概率统计中，参数估计量的评选标准有三：1）无偏性（参数估计量的均值等于参数的真实值），2）有效性（参数估计量的方差越小越好），3）一致性（当样本数从有限个逐渐增加到无穷多个时，参数估计量依概率收敛于参数真值）。《概率论与数理统计》，高祖新等，1999年，7.3节估计量的评选标准</li>
+<li><span id="MathJax-Element-58-Frame" class="MathJax"><span id="MathJax-Span-616" class="math"><span id="MathJax-Span-617" class="mrow"><span id="MathJax-Span-618" class="msubsup"><span id="MathJax-Span-619" class="mi"></span><span id="MathJax-Span-620" class="mn">5</span></span></span></span></span>:&nbsp;Breiman, L., Friedman, J., Stone, C. J., &amp; Olshen, R. A. (1984). <em>Classification and regression trees</em>. CRC press. &nbsp;Breiman获KDD 2005 Innovation Award 创新奖</li>
+<li><span id="MathJax-Element-59-Frame" class="MathJax"><span id="MathJax-Span-621" class="math"><span id="MathJax-Span-622" class="mrow"><span id="MathJax-Span-623" class="msubsup"><span id="MathJax-Span-624" class="mi"></span><span id="MathJax-Span-625" class="mn">6</span></span></span></span></span>: F是泛函空间，或者叫假设空间；f是函数，或者叫假设。这里的ensemble一共有K个组件/基学习器，他们的组合方式是不带权重的累加。<em>NOTE</em>：【一般boosting里面（如AdaBoost）<span id="MathJax-Element-60-Frame" class="MathJax"><span id="MathJax-Span-626" class="math"><span id="MathJax-Span-627" class="mrow"><span id="MathJax-Span-628" class="mi">f</span></span></span></span>是有权重叠加 原因是那些权重自然地被吸收到叶子的weight里面去了。】 by Chen Tianqi</li>
+<li><span id="MathJax-Element-61-Frame" class="MathJax"><span id="MathJax-Span-629" class="math"><span id="MathJax-Span-630" class="mrow"><span id="MathJax-Span-631" class="msubsup"><span id="MathJax-Span-632" class="mi"></span><span id="MathJax-Span-633" class="mn">7</span></span></span></span></span>:&nbsp;Friedman等（ Friedman, J., Hastie, T., &amp; Tibshirani, R. (2000). <em>Additive logistic regression: a statistical view of boosting</em> (with discussion and a rejoinder by the authors). The annals of statistics, 28(2), 337-407. ）在2000年为boosting这种集成学习方法范式提供了一种统计解释，即加性逻辑斯蒂回归。但是他们不能完全解释AdaBoost算法的抗过拟合性。南大周志华等人（http://www.slideshare.net/hustwj/ccl2014-keynote）从统计学习理论的间隔分布出发，较完满的解决了这个问题。</li>
+<li><span id="MathJax-Element-62-Frame" class="MathJax"><span id="MathJax-Span-634" class="math"><span id="MathJax-Span-635" class="mrow"><span id="MathJax-Span-636" class="msubsup"><span id="MathJax-Span-637" class="mi"></span><span id="MathJax-Span-638" class="mn">8</span></span></span></span></span>:&nbsp;这个思想即是AdaBoost等boosting算法的思想：串行生成一系列基学习器，使得当前基学习器都重点关注以前所有学习器犯错误的那些数据样本，如此达到提升的效果。</li>
+<li><span id="MathJax-Element-63-Frame" class="MathJax"><span id="MathJax-Span-639" class="math"><span id="MathJax-Span-640" class="mrow"><span id="MathJax-Span-641" class="msubsup"><span id="MathJax-Span-642" class="mi"></span><span id="MathJax-Span-643" class="mn">9</span></span></span></span></span>:&nbsp;注意，这里的优化搜索变量是<span id="MathJax-Element-64-Frame" class="MathJax"><span id="MathJax-Span-644" class="math"><span id="MathJax-Span-645" class="mrow"><span id="MathJax-Span-646" class="mi">f</span></span></span></span>（即搜索当前的基学习器f），所以其他不关于<span id="MathJax-Element-65-Frame" class="MathJax"><span id="MathJax-Span-647" class="math"><span id="MathJax-Span-648" class="mrow"><span id="MathJax-Span-649" class="mi">f</span></span></span></span>的项都被吸纳到const中，如当前的误差损失</li>
+<li><span id="MathJax-Element-66-Frame" class="MathJax"><span id="MathJax-Span-650" class="math"><span id="MathJax-Span-651" class="mrow"><span id="MathJax-Span-652" class="msubsup"><span id="MathJax-Span-653" class="mi"></span><span id="MathJax-Span-654" class="texatom"><span id="MathJax-Span-655" class="mrow"><span id="MathJax-Span-656" class="mn">10</span></span></span></span></span></span></span>: 1). 分别作为要优化的变量<span id="MathJax-Element-67-Frame" class="MathJax"><span id="MathJax-Span-657" class="math"><span id="MathJax-Span-658" class="mrow"><span id="MathJax-Span-659" class="mi">f</span></span></span></span>的一次系数<span id="MathJax-Element-68-Frame" class="MathJax"><span id="MathJax-Span-660" class="math"><span id="MathJax-Span-661" class="mrow"><span id="MathJax-Span-662" class="mi">g</span></span></span></span>和二次系数<span id="MathJax-Element-69-Frame" class="MathJax"><span id="MathJax-Span-663" class="math"><span id="MathJax-Span-664" class="mrow"><span id="MathJax-Span-665" class="mn">1</span><span id="MathJax-Span-666" class="texatom"><span id="MathJax-Span-667" class="mrow"><span id="MathJax-Span-668" class="mo">/</span></span></span><span id="MathJax-Span-669" class="mn">2</span><span id="MathJax-Span-670" class="mo">∗</span><span id="MathJax-Span-671" class="mi">h</span></span></span></span><br>
+2). 误差函数对<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163605.png"><img class="alignnone size-full wp-image-15801" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163605.png" alt="QQ截图20150423163605" width="58" height="37"></a>求导时，即涉及到前<span id="MathJax-Element-71-Frame" class="MathJax"><span id="MathJax-Span-688" class="math"><span id="MathJax-Span-689" class="mrow"><span id="MathJax-Span-690" class="mi">t</span><span id="MathJax-Span-691" class="mo">−</span><span id="MathJax-Span-692" class="mn">1</span></span></span></span>个基学习器，因为他们决定了当前的预测结果</li>
+<li><span id="MathJax-Element-72-Frame" class="MathJax"><span id="MathJax-Span-693" class="math"><span id="MathJax-Span-694" class="mrow"><span id="MathJax-Span-695" class="msubsup"><span id="MathJax-Span-696" class="mi"></span><span id="MathJax-Span-697" class="texatom"><span id="MathJax-Span-698" class="mrow"><span id="MathJax-Span-699" class="mn">11</span></span></span></span></span></span></span>:&nbsp;因为每个数据点落入且仅落入一个叶子节点，所以可以把<span id="MathJax-Element-73-Frame" class="MathJax"><span id="MathJax-Span-700" class="math"><span id="MathJax-Span-701" class="mrow"><span id="MathJax-Span-702" class="mi">n</span></span></span></span>个数据点按叶子成组，类似于合并同类项，两个数据点同类指的是落入相同的叶子，即这里的指示变量集<span id="MathJax-Element-74-Frame" class="MathJax"><span id="MathJax-Span-703" class="math"><span id="MathJax-Span-704" class="mrow"><span id="MathJax-Span-705" class="msubsup"><span id="MathJax-Span-706" class="mi">I</span><span id="MathJax-Span-707" class="mi">j</span></span></span></span></span></li>
+<li><span id="MathJax-Element-75-Frame" class="MathJax"><span id="MathJax-Span-708" class="math"><span id="MathJax-Span-709" class="mrow"><span id="MathJax-Span-710" class="msubsup"><span id="MathJax-Span-711" class="mi"></span><span id="MathJax-Span-712" class="texatom"><span id="MathJax-Span-713" class="mrow"><span id="MathJax-Span-714" class="mn">12</span></span></span></span></span></span></span>:&nbsp;变量是<span id="MathJax-Element-76-Frame" class="MathJax"><span id="MathJax-Span-715" class="math"><span id="MathJax-Span-716" class="mrow"><span id="MathJax-Span-717" class="msubsup"><span id="MathJax-Span-718" class="mi">w</span><span id="MathJax-Span-719" class="mi">j</span></span></span></span></span>，关于它的二次函数是：<a href="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163538.png"><img class="alignnone size-full wp-image-15800" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/QQ截图20150423163538.png" alt="QQ截图20150423163538" width="258" height="32"></a>，该函数对变量<span id="MathJax-Element-78-Frame" class="MathJax"><span id="MathJax-Span-747" class="math"><span id="MathJax-Span-748" class="mrow"><span id="MathJax-Span-749" class="msubsup"><span id="MathJax-Span-750" class="mi">w</span><span id="MathJax-Span-751" class="mi">j</span></span></span></span></span>求导并令其等于0，即得到<span id="MathJax-Element-79-Frame" class="MathJax"><span id="MathJax-Span-752" class="math"><span id="MathJax-Span-753" class="mrow"><span id="MathJax-Span-754" class="msubsup"><span id="MathJax-Span-755" class="mi">w</span><span id="MathJax-Span-756" class="mo">∗</span><span id="MathJax-Span-757" class="mi">j</span></span></span></span></span>的表达式。</li>
+</ul>
+<p>&nbsp;</p>
+<p>文章出处：http://www.52cs.org/?p=429</p>
+      </div>
+      <div>
+        <strong>注：转载文章均来自于公开网络，仅供学习使用，不会用于任何商业用途，如果侵犯到原作者的权益，请您与我们联系删除或者授权事宜，联系邮箱：contact@dataunion.org。转载数盟网站文章请注明原文章作者，否则产生的任何版权纠纷与数盟无关。</strong>
+      </div>
+      <!--content_text-->
+        <div class="fenxian">
+          <!-- JiaThis Button BEGIN -->
+<div class="jiathis_style_32x32">
+	<a class="jiathis_button_weixin" title="分享到微信"><span class="jiathis_txt jtico jtico_weixin"></span></a>
+	<a class="jiathis_button_tsina" title="分享到微博"><span class="jiathis_txt jtico jtico_tsina"></span></a>
+	<a class="jiathis_button_qzone" title="分享到QQ空间"><span class="jiathis_txt jtico jtico_qzone"></span></a>
+	<a class="jiathis_button_cqq" title="分享到QQ好友"><span class="jiathis_txt jtico jtico_cqq"></span></a>
+	<a class="jiathis_button_tumblr" title="分享到Tumblr"><span class="jiathis_txt jtico jtico_tumblr"></span></a>
+	<a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	<a class="jiathis_counter_style"><span class="jiathis_button_expanded jiathis_counter jiathis_bubble_style" id="jiathis_counter_57" title="累计分享10次">10</span></a>
+</div>
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/jia.js" charset="utf-8"></script><script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/plugin.client.js" charset="utf-8"></script>
+<!-- JiaThis Button END -->
+      </div>
+    </article>
+    <!--content-->
+    
+    <!--相关文章-->
+    <div class="xianguan">
+      <div class="xianguantitle">相关文章！</div>
+      <ul class="pic">
+                <li><a href="http://dataunion.org/25840.html">
+                    <img width="300" height="186" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/57e633f14bb21-300x186.jpg" class="attachment-medium size-medium wp-post-image" alt="57e633f14bb21" srcset="http://dataunion.org/wp-content/uploads/2016/09/57e633f14bb21-300x186.jpg 300w, http://dataunion.org/wp-content/uploads/2016/09/57e633f14bb21.jpg 600w" sizes="(max-width: 300px) 100vw, 300px">                    </a><a rel="bookmark" href="http://dataunion.org/25840.html" title="腾讯蒋杰：不是大数据的大数据与不是人工智能的人工智能" class="link">
+          腾讯蒋杰：不是大数据的大数据与不是人工智能的人工智能          </a></li>
+                <li><a href="http://dataunion.org/25837.html">
+                    <img width="300" height="198" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/57e0f10642af0-300x198.jpg" class="attachment-medium size-medium wp-post-image" alt="57e0f10642af0" srcset="http://dataunion.org/wp-content/uploads/2016/09/57e0f10642af0-300x198.jpg 300w, http://dataunion.org/wp-content/uploads/2016/09/57e0f10642af0.jpg 740w" sizes="(max-width: 300px) 100vw, 300px">                    </a><a rel="bookmark" href="http://dataunion.org/25837.html" title="好魔性的机器人！会偷开房门且弹跳俱佳，售价 1 万美元" class="link">
+          好魔性的机器人！会偷开房门且弹跳俱佳，售价 1 万美元          </a></li>
+                <li><a href="http://dataunion.org/25834.html">
+                    <img width="300" height="200" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/57e4ce3294e60-300x200.png" class="attachment-medium size-medium wp-post-image" alt="57e4ce3294e60" srcset="http://dataunion.org/wp-content/uploads/2016/09/57e4ce3294e60-300x200.png 300w, http://dataunion.org/wp-content/uploads/2016/09/57e4ce3294e60.png 420w" sizes="(max-width: 300px) 100vw, 300px">                    </a><a rel="bookmark" href="http://dataunion.org/25834.html" title="脑洞大开：城市全面自动化后，公共事务还需要人类干预吗？" class="link">
+          脑洞大开：城市全面自动化后，公共事务还需要人类干预吗？          </a></li>
+                <li><a href="http://dataunion.org/25830.html">
+                    <img width="100" height="100" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/magic_logo.jpg" class="attachment-medium size-medium wp-post-image" alt="Light effect">                    </a><a rel="bookmark" href="http://dataunion.org/25830.html" title="撇开代码不说，谈谈我对架构的6个冷思考" class="link">
+          撇开代码不说，谈谈我对架构的6个冷思考          </a></li>
+              </ul>
+    </div>
+    <!--相关文章-->
+    
+    <div class="comment" id="comments">
+      
+<!-- You can start editing here. -->
+
+
+	<ul id="comment">
+		   <li id="comment-12881">
+			 <span><a href="" class="avatar" target="_blank">
+				<img src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/14cb823d6ef17247bc5067f4cb9afa88" class="avatar avatar-86" height="86" width="86">			</a></span>
+			<div class="mhcc">
+				<address>
+					yytd - 
+						2015/07/29				</address>			
+							<p>写得好好啊，通俗易懂。之前找了很久资料都没看明白xgboost，看你的就懂了，帮助很大。32个赞</p>
+			</div>
+		</li>
+        
+<!-- #comment-## -->
+	</ul>
+
+
+ 
+
+
+<div class="title">
+			期待你一针见血的评论，Come on！
+</div>
+
+<div id="respond">
+
+<p>不用想啦，马上<a href="http://dataunion.org/wp-login.php?redirect_to=http%3A%2F%2Fdataunion.org%2F15787.html">　"登录"　</a> 发表自已的想法.</p>
+</div>
+
+    </div>
+    <!-- .nav-single -->
+          </div>
+  <!--Container End-->
+  <aside id="sitebar">
+  <div class="sitebar_list2">
+    <div class="wptag"> <span class="tagtitle">热门标签+</span>
+      <div class="tagg">
+        <ul id="menu-%e5%8f%8b%e6%83%85%e9%93%be%e6%8e%a5" class="menu"><li id="menu-item-1605" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-1605"><a href="http://taidizh.com/">飔拓科技</a></li><li id="menu-item-20884" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-20884"><a href="http://www.transwarp.cn/">星环科技</a></li><li id="menu-item-3538" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-3538"><a href="http://datall.org/">珈和遥感</a></li><li id="menu-item-20888" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-20888"><a href="http://www.chinahadoop.cn/">小象学院</a></li></ul>      </div>
+    </div>
+  </div>
+     <div class="sitebar_list">
+       <h4 class="sitebar_title">文章分类</h4><div class="tagcloud"><a href="http://dataunion.org/category/industry/demo" class="tag-link-44" title="4个话题" style="font-size: 10.196078431373pt;">Demo展示</a>
+<a href="http://dataunion.org/category/experts" class="tag-link-31" title="52个话题" style="font-size: 15.796078431373pt;">专家团队</a>
+<a href="http://dataunion.org/category/tech/ai" class="tag-link-870" title="336个话题" style="font-size: 20.243137254902pt;">人工智能</a>
+<a href="http://dataunion.org/category/%e5%8a%a0%e5%85%a5%e6%95%b0%e7%9b%9f" class="tag-link-488" title="1个话题" style="font-size: 8pt;">加入数盟</a>
+<a href="http://dataunion.org/category/tech/viz" class="tag-link-869" title="99个话题" style="font-size: 17.333333333333pt;">可视化</a>
+<a href="http://dataunion.org/category/partners" class="tag-link-30" title="6个话题" style="font-size: 11.019607843137pt;">合作伙伴</a>
+<a href="http://dataunion.org/category/parterc" class="tag-link-889" title="9个话题" style="font-size: 11.843137254902pt;">合作会议</a>
+<a href="http://dataunion.org/category/books" class="tag-link-104" title="17个话题" style="font-size: 13.270588235294pt;">图书</a>
+<a href="http://dataunion.org/category/tech/base" class="tag-link-220" title="297个话题" style="font-size: 19.913725490196pt;">基础架构</a>
+<a href="http://dataunion.org/category/tech/analysis" class="tag-link-219" title="259个话题" style="font-size: 19.58431372549pt;">数据分析</a>
+<a href="http://dataunion.org/category/tech/dm" class="tag-link-887" title="22个话题" style="font-size: 13.819607843137pt;">数据挖掘</a>
+<a href="http://dataunion.org/category/tech" class="tag-link-34" title="512个话题" style="font-size: 21.23137254902pt;">文章</a>
+<a href="http://dataunion.org/category/uncategorized" class="tag-link-1" title="699个话题" style="font-size: 22pt;">未分类</a>
+<a href="http://dataunion.org/category/events" class="tag-link-4" title="31个话题" style="font-size: 14.643137254902pt;">活动</a>
+<a href="http://dataunion.org/category/tech/%e6%b7%b1%e5%ba%a6%e5%ad%a6%e4%b9%a0" class="tag-link-890" title="38个话题" style="font-size: 15.082352941176pt;">深度学习</a>
+<a href="http://dataunion.org/category/tech/devl" class="tag-link-221" title="235个话题" style="font-size: 19.364705882353pt;">编程语言</a>
+<a href="http://dataunion.org/category/career" class="tag-link-888" title="51个话题" style="font-size: 15.796078431373pt;">职业规划</a>
+<a href="http://dataunion.org/category/jobs" class="tag-link-5" title="2个话题" style="font-size: 8.9882352941176pt;">职位</a>
+<a href="http://dataunion.org/category/industry" class="tag-link-871" title="50个话题" style="font-size: 15.741176470588pt;">行业</a>
+<a href="http://dataunion.org/category/industry/case" class="tag-link-613" title="96个话题" style="font-size: 17.278431372549pt;">行业应用</a>
+<a href="http://dataunion.org/category/industry/news" class="tag-link-885" title="142个话题" style="font-size: 18.211764705882pt;">行业资讯</a>
+<a href="http://dataunion.org/category/training" class="tag-link-10" title="26个话题" style="font-size: 14.203921568627pt;">课程</a>
+<a href="http://dataunion.org/category/sources" class="tag-link-16" title="48个话题" style="font-size: 15.63137254902pt;">资源</a></div>
+</div> <div class="sitebar_list">
+       <h4 class="sitebar_title">功能</h4>			<ul>
+			<li><a href="http://dataunion.org/wp-login.php?action=register">注册</a></li>			<li><a href="http://dataunion.org/wp-login.php">登录</a></li>
+			<li><a href="http://dataunion.org/feed">文章<abbr title="Really Simple Syndication">RSS</abbr></a></li>
+			<li><a href="http://dataunion.org/comments/feed">评论<abbr title="Really Simple Syndication">RSS</abbr></a></li>
+			<li><a href="https://cn.wordpress.org/" title="基于WordPress，一个优美、先进的个人信息发布平台。">WordPress.org</a></li>			</ul>
+			</div></aside>
+  <div class="clear"></div>
+</div>
+<!--main-->
+﻿<footer id="dibu">
+  <div class="about">
+    <div class="right">
+      <ul id="menu-%e5%ba%95%e9%83%a8%e8%8f%9c%e5%8d%95" class="menu"><li id="menu-item-18024" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-18024"><a href="http://dataunion.org/category/partners">合作伙伴</a></li><li id="menu-item-20881" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-20881"><a href="http://dataunion.org/contribute">文章投稿</a></li><li id="menu-item-20872" class="menu-item menu-item-type-taxonomy menu-item-object-category menu-item-20872"><a href="http://dataunion.org/category/%e5%8a%a0%e5%85%a5%e6%95%b0%e7%9b%9f">加入数盟</a></li><li id="menu-item-22441" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-22441"><a href="http://dataunion.org/f-links">友情链接</a></li><li id="menu-item-20874" class="menu-item menu-item-type-post_type menu-item-object-page menu-item-20874"><a href="http://dataunion.org/aboutus">关于数盟</a></li></ul>      <p class="banquan">
+        数盟社区        ，
+        做最棒的数据科学社区      </p>
+    </div>
+    <div class="left">
+      <ul class="bottomlist">
+         <li>
+		<a href="http://weibo.com/DataScientistUnion" target="_blank" 　title=""><img src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/weibo.png" alt="柚子皮新浪微博"></a>
+		</li>
+		<li>
+		<a href="http://dataunion.org/15787.html#0" class="cd-popup-trigger"><img src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/weixin.png" alt="web app"></a>
+		</li>
+      </ul>
+	  <div class="cd-popup">
+	<div class="cd-popup-container">
+		<h1>扫描二维码,加微信公众号</h1>
+		<img src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/2014-12-06-1515289049.png">
+		<a href="http://dataunion.org/15787.html#" class="cd-popup-close"></a>
+	</div> <!-- cd-popup-container -->
+</div> <!-- cd-popup -->
+    </div>
+  </div>
+  <!--about-->
+  <div class="bottom">
+    <a href="http://dataunion.org/">数盟社区</a>  
+    <a href="http://www.miitbeian.gov.cn/" rel="external nofollow" target="_blank">
+ 京ICP备14026740号</a>
+ 联系我们：<a href="mailto:contact@dataunion.org" target="_blank">contact@dataunion.org </a>
+<div class="tongji"><script type="text/javascript">var cnzz_protocol = (("https:" == document.location.protocol) ? " https://" : " http://");document.write(unescape("%3Cspan id='cnzz_stat_icon_1000497020'%3E%3C/span%3E%3Cscript src='" + cnzz_protocol + "s11.cnzz.com/z_stat.php%3Fid%3D1000497020%26show%3Dpic' type='text/javascript'%3E%3C/script%3E"));</script><span id="cnzz_stat_icon_1000497020"></span><script src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/z_stat.php" type="text/javascript"></script><script src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/core.php" charset="utf-8" type="text/javascript"></script></div>
+  <!--bottom--> 
+  	<div class="scroll" id="scroll" style="display: none;">
+		 ︿ 
+	</div>
+	<script type="text/javascript">
+	$(function(){
+		showScroll();
+		function showScroll(){
+			$(window).scroll( function() { 
+				var scrollValue=$(window).scrollTop();
+				scrollValue > 500 ? $('div[class=scroll]').fadeIn():$('div[class=scroll]').fadeOut();
+			} );	
+			$('#scroll').click(function(){
+				$("html,body").animate({scrollTop:0},200);	
+			});	
+		}
+	})
+	</script>
+</div></footer>
+<!--dibu-->
+<script type="text/javascript" src="./Boosted Tree：一篇很有见识的文章 _ 数盟社区_files/wp-embed.min.js"></script>
+<div id="cntvlive2-is-installed"></div></body></html>

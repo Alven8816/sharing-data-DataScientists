@@ -1,0 +1,77 @@
+---
+title: "xgboost"
+author: "余文华"
+date: "2016年9月17日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## xgboost安装
+```{r}
+library(xgboost)
+```
+##简单尝试
+```{r}
+# load data
+data(agaricus.train, package='xgboost')
+data(agaricus.test, package='xgboost')
+train <- agaricus.train
+test <- agaricus.test
+# fit model
+bst <- xgboost(data = train$data, label = train$label, max.depth = 2, eta = 1, nround = 2,
+               nthread = 2, objective = "binary:logistic")
+# predict
+pred <- predict(bst, test$data)
+```
+
+###数据处理
+
+```{r}
+library(xgboost)
+library(readr)
+library(stringr)
+library(caret)
+library(car)
+```
+
+
+```{r}
+example <- mtcars[,c(1,2,8,9,10)]
+example$cyl <- as.factor(example$cyl)
+example$vs <- as.factor(example$vs)
+example$am <- as.factor(example$am)
+example$gear <- as.factor(example$gear)
+str(example)
+#转换分类变量为“独热向量”
+sparse_matrix <- Matrix::sparse.model.matrix(mpg ~ .-1,data = example)
+#转换目标变量
+output_vector <- example[,"am"]==1
+```
+```{r}
+#独热编码分类特征
+ohe_feats <- c("cyl","vs","am","gear")
+vars <- dummyVars(~ cyl + vs + am + gear, data=example)
+example_vars <- as.data.frame(predict(vars,example[,-1]))
+example_combined <- cbind(example[,1],example_vars)
+names(example_combined)[1]="labels"
+```
+
+```{r}
+model <- xgb.dump(bst,with.stats = TRUE)
+model[1:10]
+#打印top10 nodes of the model
+
+names <- dimnames(data.matrix(example_combined[,-1]))[[2]]
+ #获得特征的真实名称
+
+# 计算特征重要性矩阵
+importance_matrix <- xgb.importance(names, model = bst)
+# 制图
+xgb.plot.importance(importance_matrix[1:10,])
+# 在最后一步如果失效可能是因为版本问题,你可以尝试:
+barplot(importance_matrix[,1])
+```
+

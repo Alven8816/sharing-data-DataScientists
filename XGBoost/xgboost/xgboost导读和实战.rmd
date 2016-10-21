@@ -1,0 +1,196 @@
+---
+title: "【机器学习】XGBoost算法学习小结"
+author: "余文华"
+date: "2016年9月25日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## XGBoost概述
+
+    xgboost 是"极端梯度上升"(Extreme Gradient Boosting)的简称,是一种现在在数据科学竞赛的获胜方案很流行的算法，它的流行源于在著名的Kaggle数据科学竞赛上被称为"奥托分类"的挑战。由于其高效的C++实现，xgboost在性能上超过了最常用使用的R包gbm和Python包sklearn。例如在Kaggle的希格斯子竞赛数据上，单线程xgboost比其他两个包均要快出50%，在多线程上xgboost更是有接近线性的性能提升。由于其性能和使用便利性，xgboost已经在Kaggle竞赛中被广泛使用[1]。
+    xgboost是使用梯度提升框架实现高效、灵活、可移植的机器学习库，是GBDT(GBM)的一个C++实现。不同于GBDT串行生成的缺点，它快速的秘诀在于算法在单机上也可以并行计算的能力[2]。下图是xgboost和另外两个常用包的性能对比。
+    
+![compared](F:\乐享数据DataScientists(data-sharing)\XGBoost\555d6d614571e.jpg)
+    
+    
+## GBDT相关内容
+
+    既然XGBoost是GBDT(GBM)的一种高效C++实现，那有必要先了解下GBDT的相关内容。
+
+###1. 什么是GB？
+
+    GB即梯度提升(Gradient boosting),首先看提升(boosting):是对一份数据，建立M个简单弱分类模型(比随机分类好一点点)，每次分类都将上一次分错的数据权重提高一点再进行分类，这样最终得到的分类器在测试数据与训练数据上都可以得到比较好的成绩[3]。
+    梯度提升是通过每步产生一个若预测模型(如决策树)，并加权累加到总模型中，形成一个强分类模型。如果每一步的弱预测模型生成都是依据损失函数的梯度方向，则称梯度提升。Boosting主要是一种思想，表示“知错就改”，而Gradient Boosting是在这个思想下的一种函数（也可以说是模型）的优化的方法，首先将函数分解为可加的形式（其实所有的函数都是可加的，只是是否好放在这个框架中，以及最终的效果如何）。然后进行m次迭代，通过使得损失函数在梯度方向上减少，最终得到一个优秀的模型。
+    
+![boost](http://s10.sinaimg.cn/large/001LbiuLzy6UuNRRguta9)
+
+###什么是DT？
+
+    DT即是回归决策树 Regression Decision Tree(注意GBDT中的树都是回归树，不是分类树，尽管GBDT调整后也可用于分类但不代表GBDT的树是分类树)，GBDT的核心在于累加所有树的结果作为最终结果，例如对对年龄的累加，而分类树的结果显然是没办法累加的。
+    构建一颗决策树的核心在于“树结构”和“叶权值”，决策树的学习过程就是构造如何使用特征得到划分，从而得到这些权值的过程。回归树总体流程与分类树类似，不过在每个节点（不一定是叶子节点）都会得一个预测值，以年龄为例，该预测值等于属于这个节点的所有人年龄的平均值。分枝时穷举每一个feature的每个阈值找最好的分割点，但衡量最好的标准不再是分类树所用的最大熵，而是最小化均方差--即（每个人的年龄-预测年龄）^2 的总和 / N，或者说是每个人的预测误差平方和除以N。这很好理解，被预测出错的人数越多，错的越离谱，均方差就越大，通过最小化均方差能够找到最靠谱的分枝依据。
+
+###什么是GBDT？
+
+    GBDT(Gradient Boosting Decision Tree) 又叫 MART（Multiple Additive Regression Tree)，是一种迭代的决策树算法，该算法由多棵决策树组成，所有树的结论累加起来做最终答案。它在被提出之初就和SVM一起被认为是泛化能力（generalization)较强的算法。GBDT的核心就在于，每一棵树学的是之前所有树结论和的残差，这个残差就是一个加预测值后能得真实值的累加量。与随机森林不同，随机森林采用多数投票输出结果；而GBDT则是将所有结果累加起来，或者加权累加起来。
+    有个比较经典的例子：对于每棵树独立训练一遍，比如A这个人，第一棵树认为是10岁，第二棵树认为是0岁，第三棵树认为是20岁，我们就取平均值10岁做最终结论？--当然不是！且不说这是投票方法并不是GBDT，只要训练集不变，独立训练三次的三棵树必定完全相同，这样做完全没有意义。之前说过，GBDT是把所有树的结论累加起来做最终结论的，所以可以想到每棵树的结论并不是年龄本身，而是年龄的一个累加量。比如A的真实年龄是18岁，但第一棵树的预测年龄是12岁，差了6岁，即残差为6岁。那么在第二棵树里我们把A的年龄设为6岁去学习，如果第二棵树真的能把A分到6岁的叶子节点，那累加两棵树的结论就是A的真实年龄；如果第二棵树的结论是5岁，则A仍然存在1岁的残差，第三棵树里A的年龄就变成1岁，继续学。这就是Gradient Boosting在GBDT中的意义。
+    
+###GBDT与随机森林的比较
+
+    GBDT与随机森林的区别
+    GBDT和随机森林的相同点：
+1. 都是由多棵树组成
+
+2. 最终的结果都是由多棵树一起决定
+
+    GBDT和随机森林的不同点：
+1. 组成随机森林的树可以是分类树，也可以是回归树；而GBDT只由回归树组成;
+
+2. 组成随机森林的树可以并行生成,而GBDT只能是串行生成;
+
+3. 对于最终的输出结果而言，随机森林采用多数投票等；而GBDT则是将所有结果累加起来，或者加权累加起来；
+
+4. 随机森林对异常值不敏感，GBDT对异常值非常敏感；
+
+5. 随机森林对训练数据一视同仁，GBDT是基于权值的弱分类器的集成;
+
+6. 随机森林是通过减少模型方差提高性能，GBDT是通过减少模型偏差提高性能.
+    
+##XGBoost对GBDT的改进
+
+    不同于传统的gbdt方式，只利用了一阶的导数信息，xgboost 对损失函数做了二阶的泰勒展开，并在目标函数之外加入了正则项整体求最优解，用以权衡目标函数的下降和模型的复杂程度，避免过拟合。这部分的推导很重要，也是整个算法的核心，具体学习可以查看陈天奇[5]的主页<http://www.52cs.org/?p=429>.
+    XGBoost除了理论上和传统GBDT的差别外，还有其他主要特点：一是速度快。机器内部采用单机多线程方式来并行加速匀速，机器之间通信基于 rabit 实现的all reduce 的同步接口。二是可移植，少写代码。xgboost提供了Python、R语言、Julia、Scala等接口，同时支持hadoop、Yarn等分布式计算。三是可容错性。Allreduce 每一个节点最后拿到的是一样的结果，这意味着可以让一些节点记住结果。当有节点挂掉重启的时候，可以直接向还活着的节点索要结果就可以了。
+    
+
+##XGBoost代码实现
+
+    在这里，主要探讨R实现XGBoost，其他代码实现可以参考XGBoost官网[6]。
+
+###XGBoost安装
+    
+```{r}
+library(xgboost)
+```
+
+###数据变换及处理
+
+    XGBoost仅适用于数值型向量。因此,您需要将所有其他形式的数据转换为数值型向量。一个简单的方法将类别变量转换成数值向量是一个"独热编码"。这个词源于数字电路语言,这意味着一个数组的二进制信号,只有合法的值是0和1。在R中,一个独热编码非常简单。这一步(如下所示)会在每一个可能值的变量使用标志建立一个稀疏矩阵。稀疏矩阵是一个矩阵的零的值。稀疏矩阵是一个大多数值为零的矩阵。相反,一个稠密矩阵是大多数值非零的矩阵。也可以通过设置哑变量实现稀疏（独热编码分类变量）。
+    
+```{r}
+#转换为稀疏矩阵
+example <- mtcars[,c(1,2,8,9,10)]
+example$cyl <- as.factor(example$cyl)
+example$vs <- as.factor(example$vs)
+example$am <- as.factor(example$am)
+example$gear <- as.factor(example$gear)
+sparse_matrix <- Matrix::sparse.model.matrix(mpg ~ .-1,data = example)
+head(sparse_matrix)
+```
+ 
+* sparse.model.matrix这条命令的圆括号里面包含了所有其他输入参数。
+
+* 参数“mpg”说这句话应该忽略“mpg”这个响应变量。
+
+* “-1”意味着该命令会删除矩阵的第一列。
+
+* 最后你需要指定数据集名称。   
+  
+```{r}
+library(caret)
+#独热编码分类特征
+ohe_feats <- c("cyl","vs","am","gear")
+vars <- dummyVars(~ cyl + vs + am + gear, data=example)
+example_vars <- as.data.frame(predict(vars,example[,-1]))
+example_combined <- cbind(example[,1],example_vars)
+names(example_combined)[1]="labels"
+head(example_combined)
+```
+
+###标签变量及分解训练集和测试集
+
+    不同于其他模型，XGBoost除需要满足数值型向量外，还需要把标签变量(因变量)与自变量分离，并在XGBoost模型中分别指定数据集。分解训练集和测试集的方法与其他模型一致。
+    在xgboost模型中还有一类稀疏矩阵数据格式类型dgCMatrix。它是一类稀疏的数字矩阵压缩，稀疏，面向列的格式。实现在列的非零元素增加行顺序排序。dgCMatrix是Matrix包类稀疏的数字矩阵“标准”。
+    以官网中的数据代码为例：
+```{r}
+# load data
+data(agaricus.train, package='xgboost')
+data(agaricus.test, package='xgboost')
+train <- agaricus.train
+test <- agaricus.test
+# fit model
+bst <- xgboost(data = train$data, label = train$label, max.depth = 2, eta = 1, nround = 2,
+               nthread = 2, objective = "binary:logistic")
+# predict
+pred <- predict(bst, test$data)
+```
+
+    xgboost函数中，label参数用来指定标签变量。
+    除了数据清洗，在特征工程选择上，可以首先使用随机森林进行训练，期望获得每个特征的重要性，进行特征选择。然后再通过选择的特征维度进行预测，构建xgboost分类器。
+
+###参数的设定和模型模拟（此部分参考HarryZhu的译文，见参考2）
+
+    在Xgboost中最重要的在于调参。它主要包括三种类型的参数：通用参数、辅助参数和任务参数。
+    
+* 通用参数
+
+    通用参数为我们提供在上升过程中选择哪种上升模型。常用的是树或线性模型。
+    
+* silent : 默认值是0。您需要指定0连续打印消息,静默模式1。
+* booster : 默认值是gbtree。你需要指定要使用的上升模型:gbtree(树)或gblinear(线性函数)。
+* num_pbuffer : 这是由xgboost自动设置,不需要由用户设定。阅读xgboost文档的更多细节。
+* num_feature : 这是由xgboost自动设置,不需要由用户设定。
+    
+*辅助参数
+
+    辅助参数取决于你选择的上升模型.
+    
+* eta：默认值设置为0.3。您需要指定用于更新步长收缩来防止过度拟合。每个提升步骤后,我们可以直接获得新特性的权重。实际上 eta 收缩特征权重的提高过程更为保守。范围是0到1。低η值意味着模型过度拟合更健壮。
+
+* gamma:默认值设置为0。您需要指定最小损失减少应进一步划分树的叶节点。更大,更保守的算法。范围是0到∞。γ越大算法越保守。
+
+* max_depth:默认值设置为6。您需要指定一个树的最大深度。参数范围是1到∞。
+
+* min_child_weight:默认值设置为1。您需要在子树中指定最小的（海塞）实例权重的和，然后这个构建过程将放弃进一步的分割。在线性回归模式中，在每个节点最少所需实例数量将简单的同时部署。更大,更保守的算法。参数范围是0到∞。
+
+* max_delta_step：默认值设置为0。允许我们估计每棵树的权重。如果该值设置为0,这意味着没有约束。如果它被设置为一个正值,它可以帮助更新步骤更为保守。通常不需要此参数,但是在逻辑回归中当分类是极为不均衡时需要用到。将其设置为1 - 10的价值可能有助于控制更新。参数范围是0到∞。
+
+* subsample： 默认值设置为1。您需要指定训练实例的子样品比。设置为0.5意味着XGBoost随机收集一半的数据实例来生成树来防止过度拟合。参数范围是0到1。
+
+* colsample_bytree : 默认值设置为1。在构建每棵树时,您需要指定列的子样品比。范围是0到1.
+
+* lambda and alpha : 这些都是正则化项权重。λ默认值假设是1和α= 0。
+* lambda_bias : L2正则化项在偏差上的默认值为0。
+
+* 任务参数
+    
+    任务参数,决定学习场景,例如,回归任务在排序任务中可能使用不同的参数。
+
+* base_score : 默认值设置为0.5。您需要指定初始预测分数作为全局偏差。
+
+* objective : 默认值设置为reg:linear。您需要指定你想要的类型的学习者,包括线性回归、逻辑回归、泊松回归等。
+
+* eval_metric : 您需要指定验证数据的评估指标,一个默认的指标分配根据客观(rmse回归,错误分类,意味着平均精度等级。
+
+* seed : 随机数种子，确保重现数据相同的输出。
+
+
+##参考资料
+
+-> [1]DMLC深盟分布式深度机器学习开源平台解析 <http://www.csdn.net/article/2015-05-21/2824742>
+
+-> [2]快速上手：在R中使用XGBoost算法 <https://segmentfault.com/a/1190000004421821>
+
+-> [3]机器学习中的数学(3)-模型组合(Model Combining)之Boosting与Gradient Boosting <http://www.cnblogs.com/LeftNotEasy/archive/2011/01/02/machine-learning-boosting-and-gradient-boosting.html>
+
+-> [4]GBDT（MART） 迭代决策树入门教程简介<http://blog.csdn.net/keepreder/article/details/47259241>
+
+-> [5]Boosted Tree <http://www.52cs.org/?p=429>
+
+-> [6]Scalable and Flexible Gradient Boosting <http://xgboost.readthedocs.io/en/latest/>
+
+-> [7]分布式xgboost的代码详细解读以及实战<http://forum.memect.com/blog/thread/ml-2015-05-15-3842717375226852/>
+
+-> [8]  GBDT和随机森林的区别<http://blog.csdn.net/keepreder/article/details/47272779>
