@@ -1,0 +1,91 @@
+---
+title: "特征工程实战"
+author: "余文华"
+date: "2016年10月25日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,tidy = TRUE)
+```
+##文前提要
+
+    本期你主要学习到如下内容：
+    
+1. 特征工程概述
+
+2. 特征选择的一般步骤
+
+3. 特征工程的主要包含的内容框架
+
+4. 特征选择的主要方法和实践
+
+##特征工程概述
+    
+    特征工程其实是一个偏工程的术语，在数据库领域可能叫做属性选择，而在统计学领域叫变量选择，其实是一个意思：
+
+
+## 数据读取
+
+```{r,tidy=TRUE}
+setwd("C:/Users/HP/Desktop/imbalance data")
+library(data.table)
+library(mlr)
+train <- fread("train.csv",na.strings = c(""," ","?","NA",NA,"N/A","null"))
+test <- fread("test.csv",na.strings = c(""," ","?","NA",NA,"N/A","null"))
+train[,income_level := ifelse(income_level =="-50000",0,1)]
+test[,income_level := ifelse(income_level =="-50000",0,1)]
+
+```
+
+
+```{r}
+#变换变量数据类型
+factcols <- c(2:5,7:16,20:29,31:38,40:41)
+numcols <- setdiff(1:40,factcols)
+
+train[,(factcols) := lapply(.SD,factor),.SDcols = factcols]
+train[,(numcols):= lapply(.SD,as.numeric),.SDcols = numcols]
+
+test[,(factcols) := lapply(.SD,factor),.SDcols = factcols]
+test[,(numcols):= lapply(.SD,as.numeric),.SDcols = numcols]
+
+#提取数据子集
+cat_train <- train[,factcols,with = FALSE]
+num_train <- train[,numcols,with = FALSE]
+
+cat_test <- test[,factcols,with = FALSE]
+num_test <- test[,numcols,with = FALSE]
+
+
+```
+
+##检查列项因子水平
+```{r}
+summarizeColumns(train)[,"nlevs"]
+```
+
+##特征相关性分析
+#计量资料
+```{r}
+library(corrplot)
+names(num_train) <- paste("V",1:7,sep = ".")
+cor_martix <- cor(num_train,method = "spearman") 
+corrplot(cor_martix,addCoef.col = "grey",order = "AOE")
+```
+#计数资料
+```{r}
+#分类资料探索
+all_bar <- function(i){
+        ggplot(data = cat_train,aes(x = i,fill = income_level))+geom_bar(position = "dodge",color = "black")+scale_fill_brewer(palette = "Pastel1")+theme(axis.text.x = element_text(angle = 60,hjust = 1,size = 10))
+}
+all_bar(cat_train$class_of_worker)
+#教育
+all_bar(cat_train$education)
+prop.table(table(cat_train$marital_status,cat_train$income_level),1)
+d_table <- table(cat_train$marital_status,cat_train$income_level)
+chisq.test(d_table,correct=FALSE)#correct选项设置不进行Yates连续性校正
+fisher.test(d_table)#理论頻数较小时用fisher确切概率法
+```
+
+
