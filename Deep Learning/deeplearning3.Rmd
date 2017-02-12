@@ -1,0 +1,93 @@
+---
+title: "Deep Learning 学习（三）——在windows下运行tensorflow"
+author: "余文华"
+date: "2016年9月4日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 内容概要
+
+1. tensorflow简介
+
+2. 在windows下运用docker实现tensorflow部署
+
+3. 运用神经网络实现手写数字识别
+
+##tensorflow
+
+###tensorflow简介
+
+   我们之前谈到神经网络的开源框架，包括caffe、Mxnet、tensorFlow等。这一次让我们深入探索下谷歌的第二代人工智能学习系统tensorFlow。下面这段解释来源百度百科：Tensor（张量）意味着N维数组，Flow（流）意味着基于数据流图的计算，TensorFlow为张量从图象的一端流动到另一端计算过程。TensorFlow是将复杂的数据结构传输至人工智能神经网中进行分析和处理过程的系统。
+   简而言之，先运用Tensor构建一个“图”，然后运用flow进行数据流图的计算。TensorFlow不仅仅用于深度学习，logistics回归等机器学习也可以用tensorFlow实现，因此它更像一个机器学习系统。同时支持分布式计算，主要支持的接口是Python。下面是几种框架的对比。
+   
+![image](F:\R\datasciences\Deep Learning\tensorflow1.jpg)
+
+###tensorflow简单语法
+
+    在tensorflow中，张量（tensor）表示数据，图（graph）表示计算任务，通过会话（Session）实现图或任务的执行，通过变量（Variable）维护状态，运用feed和fetch实现赋值或获取数据。
+    不同于caffe的框架构建（见乐享数据DataScientists的Deep Learning 学习（二）），tensorflow的步骤包含2部分，首先是构造计算流图，当然这里面包含了卷积层、池化层等流图；然后是执行部分，通过session来执行。
+    通过tf.constant()创建常量节点，运用tf.variable()变量来保存参数。在执行部分，运用session，启动默认图sesstf.Session(),运用sess.run()来执行结果。注意需要运用tf.initialize_all_variables进行变量初始化。具体可参考tensorflow官网学习<https://github.com/aymericdamien/TensorFlow-Examples>。
+    下图是python的numpy与tensorflow的语法比较：
+![image](F:\R\datasciences\Deep Learning\tensorflow2.jpg)
+
+##在windows下运用docker实现tensorflow部署
+
+    这一块内容比较复杂，主要思路是首先需要在windows下安装好docker，运行docker的tensorflow镜像实现部署（中间需要用到VM VirtualBox）。当然最好还是直接在ubuntu下安装tensorflow。
+
+    1.在windows下搭建docker。从我这里主要参考的博文是：在Windows上玩TensorFlow(一)——安装Docker<http://www.neilron.xyz/set-up-docker-on-windows/>.或者可参考雪晴数据网：数据科学家Docker历险记（1）：windows下环境搭建<http://www.xueqing.tv/cms/article/247> 运用git，搭建docker（此处有视频指导哦）。
+    2.在docker中启动tensorflow镜像。博文中的下载镜像可能网络有问题，本人从阿里云开发者镜像中docker pull 了tensorflow镜像。镜像的启动：
+    
+```{docker}
+docker run -it registry.cn-hangzhou.aliyuncs.com/denverdino/tensorflow bash
+```
+    
+    注意最后的bash参数要加上，否则它会启动一个notebook的服务，运行在本地的8888端口上，然而由于没有设置端口转发，这个notebook服务是运行不了的。
+    3.运行tensorflow。进入tensorflow后，就可以进入python环境，进行tensorflow的相关操作啦！
+    
+```{docker}
+root@ec9bfd276082:/# uname -a
+Linux ec9bfd276082 4.4.8-boot2docker #1 SMP Mon Apr 25 21:57:27 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
+root@ec9bfd276082:/# ls /
+bin   dev  home  lib64  mnt        opt   root  run_jupyter.sh  srv  tmp  var
+boot  etc  lib   media  notebooks  proc  run   sbin            sys  usr
+root@ec9bfd276082:/# python
+Python 2.7.6 (default, Jun 22 2015, 17:58:13)
+[GCC 4.8.2] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import tensorflow as tf
+>>> hello = tf.constant('Hello, TensorFlow!')
+>>> sess =tf.Session()
+>>> sess.run(hello)
+'Hello, TensorFlow!'
+>>> a = tf.constant(10)
+>>> b = tf.constant(32)
+>>> sess.run(a+b)
+42
+>>>
+```
+
+##运用神经网络实现手写数字识别
+
+    有了理论指导，同时构建好了tensorflow开发环境，现在就可以进行实践练习了。
+    我们以手写数字识别为例子。我们的数据均取自MNIST数据集(ModifiedNational Institute of Standards and Technology)，它 是一个在机器学习领域已被广泛研究的典型数据集。     
+     数据文件train.csv和test.csv含有手写数字的灰度图像，从0到9，包括0和9。每幅图像都是高28像素和宽28像素，一共有784像素，每个像素都有一个单一的像素值与它相关的，说明该像素的亮暗情况，数字越高意味着越暗。该像素值是0到255之间的整数，包括0和255。训练数据集（train.csv）785列。第一列中，被称为“标签”，这是由用户手写的数字，其余的列包含相关的图像的像素值。
+
+![image](F:\R\datasciences\Deep Learning\tensorflow3.jpg)   
+
+    我们运用TensorFlow-Examples中多层感知器神经网络multilayer_perceptron.py。我们可以看到结果：对手写数字识别的模型的准确率达到了94.32%。
+    
+![image](F:\R\datasciences\Deep Learning\tensorflow5.jpg)  
+
+##参考资料：
+>- tensorflow 百度百科
+>- THE MNIST DATABASE of handwritten digits <http://yann.lecun.com/exdb/mnist/>
+>- git TensorFlow-Examples <https://github.com/aymericdamien/TensorFlow-Examples>
+>- 在Windows上玩TensorFlow(一)——安装Docker <http://www.neilron.xyz/set-up-docker-on-windows/>
+>- 雪晴数据网：数据科学家Docker历险记（1）：windows下环境搭建<http://www.xueqing.tv/cms/article/247>
+>- 深度学习相关课程资料
+
+
