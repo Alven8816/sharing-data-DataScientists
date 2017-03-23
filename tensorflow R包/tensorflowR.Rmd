@@ -1,0 +1,127 @@
+---
+title: "Windows上安装Tensorflow踩的坑"
+author: "余文华"
+date: "2017年3月14日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 前言
+
+    看到Rstudio中开始支持Tensorflow，本人是欣喜若狂的，同时TensorFlow官网从16年9月低开始支持windows安装了，不免想试试在自己的Windows上用R跑跑tensorflow的。可是事与愿违，倒腾了一周今天正式宣布，暂停这一实践。但失败的尝试也不能白失败了，拿出来晒晒说不定有高人指点呢，特此把踩过的坑述说一二，一来是寻求帮助，二来也是警惕来者，“此处有坑，请小心绕道”吧。
+
+##在Rstudio运用R实现Tensorflow的一般步骤
+
+
+    按照[TensorFlow for R](https://rstudio.github.io/tensorflow/index.html)官网说明，运用R实现Tensorflow主要包含4步(如下)，其中关键步骤在于安装好Tensorflow以及tensorflow R 包与python的连接。
+    
+1. 从[TensorFlow官网](https://www.tensorflow.org/get_started/os_setup.html#download-and-setup)安装TensorFlow.
+
+2. 安装tensorflow R 包
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=TRUE}
+devtools::install_github("rstudio/tensorflow")
+```
+
+3. 载入TensorFlow
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=TRUE}
+Sys.setenv(TENSORFLOW_PYTHON="/usr/local/bin/python")
+library(tensorflow)
+```
+
+4. 验证安装
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE, include=TRUE}
+library(tensorflow)
+sess = tf$Session()
+hello <- tf$constant('Hello, TensorFlow!')
+sess$run(hello)
+```
+
+##踩过的一号坑——tensorflow在windows上的安装
+
+    在之前的文章中，曾经通过Docker的方法，实现了在windows上安装tensorflow，感兴趣的出门左转，在公众号查看“Deep Learning 学习（三）——在window下运行tensorfolw”。现在官网有了windows支持版，当然是要尝试尝试的。
+    官网给出windows安装tensorflow有两种方法：
+
+* “native” pip
+* Anaconda
+
+    于是首先我尝试用Anaconda进行安装。在官网下载 Anaconda（目前有Anaconda2和Anaconda3，分别支持python2.7和python3.6），由于在windows中tensorflow需要python3，本人下载的Anaconda3。根据官网操作步骤，安装完成后，进入Anaconda prompt，进行如下操作
+    
+1.在conda独立空间中创建一个名为tensorflow的环境名，在这里需要加上“python = 3“ 表示在python3中建立环境”
+
+2.激活创建的环境
+
+3.安装tensorflow的CPU版本，当然也有GPU版本，但需要NVIDIA的显卡，小弟太穷，只能望“卡”兴叹了。
+
+```{}
+#1.在conda独立空间中创建一个名为tensorflow的环境
+conda create -n tensorflow python = 3.5.2
+#2.激活创建的环境
+activate tensorflow
+#3.安装tensorflow的CPU版本
+(tensorflow)C:> pip install --ignore-installed --upgrade https://storage.googleapis.com/tensorflow/windows/cpu/tensorflow-1.0.1-cp35-cp35m-win_amd64.whl
+```
+
+    经过几番尝试，成功在windows上安装上了Tensorflow，不免十分兴奋。验证如下图：
+
+![img1](F:\\乐享数据DataScientists(data-sharing)\\sharing-data-DataScientists\\tensorflow R包\\1.png)
+    
+    但是兴奋得太早，Rstudio官网中有行小字：“NOTE: You should NOT install TensorFlow with Anaconda as there are issues with the way Anaconda builds the python shared library that prevent dynamic linking from R.” 直接给了我当头一棒，这里明确说明通过Anaconda安装tensorflow无法在R中实现，即“You should NOT install TensorFlow with Anaconda”！！（此处省略一万个感叹号！）
+    
+##踩过的二号坑——运用native pip 安装 tensorflow
+
+    回到原点，再次在windows上安装tensorflow，这次是采样pip方法。需要注意的坑有以下几点：
+
+1. 安装python3.5.2，64bit并且记住不能是python2.7，python3.5.x或者python3.6，谨记。
+2. 升级pip到最新版本（如果windows没有安装pip，请自行安装，并设置好系统环境）
+3. 按照官网命令安装tensorflow
+```{}
+pip3 install --upgrade tensorflow
+```
+    好吧，我承认第3点这个坑，我至今还没爬上来，原因是总出现如下错误：
+
+![img2](F:\\乐享数据DataScientists(data-sharing)\\sharing-data-DataScientists\\tensorflow R包\\2.png)
+
+    
+在网上搜索了各种尝试均没有安装成功，其中的尝试有：
+
+1. 在pip语句中加入“--ignore-installed”，仍然除现同一错误。
+
+```{}
+pip install --upgrade --ignore-installed tensorflow
+```
+
+2. 把whl文件下载到本地，在文件夹下进行安装
+```{}
+pip install tensorflow-1.0.0-cp35-cp35m-win_amd64.whl
+```
+提示"tensorflow-1.0.0-cp35-cp35m-win_amd64.whl is not a supported wheel on this platform"
+
+3.在网络中安装
+```{}
+pip install --ignore-installed --upgrade https://storage.googleapis.com/tensorflow/windows/cpu/tensorflow-1.0.1-cp35-cp35m-win_amd64.whl 
+```
+同样提示"tensorflow-1.0.0-cp35-cp35m-win_amd64.whl is not a supported wheel on this platform"
+
+4. 把“cp35-cp35m”改成“py3-none”
+```{}
+pip install --ignore-installed --upgrade https://storage.googleapis.com/tensorflow/windows/cpu/tensorflow-1.0.1-py3-none-win_amd64.whl 
+```
+同样提示"tensorflow-1.0.0-cp35-cp35m-win_amd64.whl is not a supported wheel on this platform"
+
+![img3](F:\\乐享数据DataScientists(data-sharing)\\sharing-data-DataScientists\\tensorflow R包\\3.png)
+
+    还有其他尝试，但都一一失败，也有博客认为安装“pip3 install --upgrade tensorflow”出现“No matching distribution found for tensorflow”是网络原因，但我也尝试了很多，都没有安装成功。
+
+##其他坑——请准备最新版的Rstudio
+
+    当然还有其他浅点的“坑”，比如安装devtools::install_github("rstudio/tensorflow")时，需要最新版Rtools，并先保证Rstudio是v 1.0或更高版本等。
+    
+##写在最后
+
+    其实运用R实现tensorflow并不需要在windows环境下，并且不得不承认的是windows本身就是一个“奇深无比的坑”。但是既然官网均有安装示例，又说明通过R实现tensorflow是十分可行的思路。也让python粉们看看，tensorflow 绝不仅仅是python的“专利”。
+    最后，再次发出“求救信号”，对本人没爬出来的坑，可否指点一二，再次不胜感激！
