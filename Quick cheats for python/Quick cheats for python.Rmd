@@ -1,0 +1,88 @@
+---
+title: "【译】Python for Data Science Cheat Sheets"
+author: "余文华"
+date: "2017年3月26日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 前言
+
+    最近在Analytics Vidhya上看到一篇总结机器学习、数据科学、概率、SQL及Big Data 速查表，感觉这是比较系统化梳理知识点的有用法宝，特此列表总结。再次对SWATI KASHYAP的辛勤工作表示感谢。 
+    
+## 介绍
+
+    数据科学作为一个新兴领域，需要记忆大量的工具和技术。任何人都不可能记住这些领域的所有函数、操作及概念公式。这就是我们需要速查表的原因。但是当前有太多的“速查表”鱼龙混杂，选择一个合适的速查表也成为一个困难的任务。
+    
+## python 数据科学速查表
+
+###1. 学习python数据科学快速指南
+
+    如果你计划学习python，这个速查表应该是你最好的资源之一。在这个速查表中，你将一步步获得指点,只需按步骤执行。
+
+![fig1](C:\\Users\\HP\\Desktop\\Quick cheats for python\\1.Data-Science-in-Python.jpg)
+
+###2. 数据科学速查表
+
+    这个速查表由Datacamp提供，涵盖了所有数据科学需要的python基础操作。对于初学者，它作为一个快速浏览参考，再好不过。这个速查表代码包含变量、数据类型函数、字符串操作、列表及Numpy库的常见操作等。
+
+![fig2](C:\\Users\\HP\\Desktop\\Quick cheats for python\\2python for data science.png)
+
+###3. Python中NumPy速查表
+
+    NumPy作为python中科学计算的核心库，在这份速查表中，你将获得速查表代码如创建numpy arrays，数组数学操作，获取子集、切片、index等操作。同时分门别类地给出了每个函数操作的简单英语解释。
+    
+![fig3](C:\\Users\\HP\\Desktop\\Quick cheats for python\\3.numpy.png)
+
+###4. python 中探索性数据分析速查表
+
+    在python中，最好的数据探索库是NumPy、Pandas和Matplotlib。在这份速查表中，你将学习到如何往python载入文件，变量变换、数据排序、绘图、数据抽样、缺失值处理等内容。它也是完成数据探索最简洁的速查表之一。
+    
+![fig4](C:\\Users\\HP\\Desktop\\Quick cheats for python\\4.Data-Exploration-in-Python.png)
+
+###5. Python数据科学中Pandas库速查表
+
+    Pandas 是python中重要的库，此速查表是你使用Pandas进行数据探索操作的必备资源。它将涉及到数据读写、数据框查阅、数据框重命名，数据整合等操作。
+
+![fig5](C:\\Users\\HP\\Desktop\\Quick cheats for python\\5.jpg)
+
+###6. python 数据可视化速查表
+
+    无论是数据科学家还是个技术小白，可视化都是增强解释性的法宝。此速查表将教会你如何用python进行数据可视化，探索展示数据的不同方式。你将从中学习到如何一步步绘制histograms、bar charts、line graph、 scatter plot等。
+    
+![fig6](C:\\Users\\HP\\Desktop\\Quick cheats for python\\6.jpg)
+
+###7. python 数据科学Bokeh库速查表
+
+    Bokeh库是pyhon中进行交互可视化非常有用的库。在这张速查表中，你将学习到绘图、渲染、自定义图形等的基本步骤。
+
+![fig7](C:\\Users\\HP\\Desktop\\Quick cheats for python\\7.Bokeh.png)
+
+###8. Scikit Learn 速查表
+
+    此速查表包含了python中Scikit-Learn库的每个技术点。从数据预处理、回归、分类、聚类、降维、模型选择&度量及其描述。最主要是它还给出了机器学习的完整过程。
+    
+![fig8.1](C:\\Users\\HP\\Desktop\\Quick cheats for python\\8.1.png)
+
+![fig8.2](C:\\Users\\HP\\Desktop\\Quick cheats for python\\8.2.png)
+
+![fig8.4](C:\\Users\\HP\\Desktop\\Quick cheats for python\\8.4.png)
+
+![fig8.5](C:\\Users\\HP\\Desktop\\Quick cheats for python\\8.5.png)
+
+![fig8.6](C:\\Users\\HP\\Desktop\\Quick cheats for python\\8.6.png)
+
+![fig8.7](C:\\Users\\HP\\Desktop\\Quick cheats for python\\8.7.png)
+
+![fig8.8](C:\\Users\\HP\\Desktop\\Quick cheats for python\\8.8.png)
+
+###9. python 完成文本数据清洗的步骤速查表
+
+    文本挖掘清洗一直是个头疼的过程，知道如何正确的文本清洗是获得期望结果的关键。此速查表会用python一步步完成文本清洗，分词、字符、表达式等。并且每一步都给出了代码及举例。
+
+![fig9](C:\\Users\\HP\\Desktop\\Quick cheats for python\\9.jpg)
+
+    

@@ -1,0 +1,122 @@
+---
+title: "data.table数据处理效率比较"
+author: "余文华"
+date: "2017年5月1日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval=FALSE, include=TRUE)
+```
+
+## 写在文前
+
+    这期的博文比以前来得晚了一些，因为前段时间身体欠佳，耽误了一个周左右，后又有些“人生大事”要处理，确实更新得晚了点。开门见山，这次主要是分享一点从京东数据大赛数据处理实践中运用R对10个G左右的中等数据处理的效率做个简单的比较。
+    该数据大赛以京东商城真实的用户、商品和行为数据（脱敏后）为基础，参赛队伍需要通过数据挖掘的技术和机器学习的算法，构建用户购买商品的预测模型，输出高潜用户和目标商品的匹配结果，为精准营销提供高质量的目标群体。同时，希望参赛队伍能通过本次比赛，挖掘数据背后潜在的意义，为电商用户提供更简单、快捷、省心的购物体验。
+    当然，这里不是做广告，也不去探讨大赛规则或模型的构建，而是从最开始的数据读入及清洗处理方面比较下基于R的外部数据库(运用SQL)读取处理数据及运用data.table包对该（几个G的）数据集操作的效率。
+    
+## 数据简介及读入
+
+    报名JData数据大事，从http://www.datafountain.cn官网中即可获得数据集的下载。这里主要以JData_Action2-4月的csv数据文件（2.14G）为例进行数据操作。运用Windows系统x86_64，RAM 4G，4核R version 3.3.2 (2016-10-31)进行操作。
+    
+###基于R的外部MYSQL数据库读取处理
+
+    由于R基于内存的数据处理模式，对于2个多G的数据，放在内存中读取，显然不是明智之举。不如运用外部数据库MYSQL管理，只抽取有用的数据再读入内存来得快速便捷。但通过实际操作，却发现这种方式的数据处理效率并不理想，与直接读入内存效率差别不大。
+    运用外部数据库管理有两种方式，一是直接导入MYSQL数据库中，直接运用SQL进行数据处理；二是实现R与MYSQL的连接，通过R语句实现MYSQL操作。这里只尝试第二种方式，运用到的DIB包和RMySQL包。
+    
+```{r}
+#载入数据库
+library(DBI)
+library(RMySQL)
+
+#实现数据库与R连接
+##建立连接
+drv <-dbDriver("MySQL")
+#创建jdata数据库(此处密码隐去)
+con <- dbConnect(drv,username = "root",password = "******",port=3306,dbname = "jdata")
+#查看连接信息
+dbGetInfo(con)
+#查看数据库中的表
+dbListTables(con,dbname = "jdata")
+#可通过dbWriteTable函数把R数据框写入mysql中
+dbWriteTable(con, "actions_month2", actions_month2)
+dbWriteTable(con, "actions_month3_1", actions_month3[1:15000000,])
+dbWriteTable(con, "actions_month3_2", actions_month3[15000001:25916378,])
+dbWriteTable(con, "actions_month4", actions_month4)
+#依次合并3个月数据
+dbGetQuery(con,"insert into actions_month2 
+           select * from actions_month3")
+dbGetQuery(con,"insert into actions_month2 
+           select * from actions_month4")
+#进行R的查询
+#进行action数据集与products数据集的内连接
+actions_2_8 <- dbGetQuery(con, "select 
+products.sku_id, 
+products.brand, 
+actions_month2.user_id,   
+actions_month2.sku_id,
+actions_month2.time,
+actions_month2.model_id,
+actions_month2.type,
+actions_month2.cate,
+actions_month2.brand,
+actions_month2.month 
+                          from actions_month2 join products on actions_month2.sku_id = products.sku_id")
+#查询用户的年龄，显示前6行数据
+res <- dbSendQuery(con, "select age from users")
+dbFetch(res, n = 6)
+dbClearResult(res)  
+#整理内容写入数据库
+dbWriteTable(con,"test",sub_order)
+
+
+#把数据库中的表读入data.frame
+test <- dbReadTable(con,"test")
+
+#关闭数据连接
+dbDisconnect(con)
+```
+
+    在实践中对于本人的电脑，导入actions_month3时已经提示内存不足了，只能拆分成2个数据集依次读入MYSQL中。而且发现读入MYSQL速度非常慢，用过运用R函数dbGetQuery进行SQL查询效率也非常之低，所以非常不建议运用此方法。
+
+### 运用data.table进行快速读取及操作
+
+    data.table包是非常有用的快速处理大型数据的数据库，data.table类是data.frame的继承，因此凡事可以用data.frame操作方法均可以在data.table中使用，同时data.table更加快速并节约内存。
+    可以通过vignette(package = "data.table")获得data.table的帮助说明。我们运用data.table对数据集进行读取等操作。
+    
+```{r}
+#运用fread快速读取数据集，并保存为data.table格式
+actions_month2 <- fread("JData_Action_201602.csv", header = TRUE, stringsAsFactors = FALSE, na.strings = c("", " ", "?", "NA", NA))
+actions_month3 <- fread("JData_Action_201603.csv", header = TRUE, stringsAsFactors = FALSE, na.strings = c("", " ", "?", "NA", NA))
+actions_month4 <- fread("JData_Action_201604.csv", header = TRUE, stringsAsFactors = FALSE, na.strings = c("", " ", "?", "NA", NA))
+
+#合并数据
+action_total <- rbind(actions_month2, actions_month3, actions_month4)
+#设置“主键”，提高运算数率
+setkey(action_total, user_id, sku_id)
+setkey(products, sku_id)
+#进行action数据集与products数据集的内连接
+product_action <- products[action_total, on="sku_id", nomatch = 0]
+#查看product_action前6行数据
+product_action[,mult = "first"]
+```
+
+    data.table对象x[i, j, by]语法类似于SQL语句，i 类似where子句进行subset或条件取子集；j类似于select、update子句进行列的选择或更新等赋值；by类似于group by子句进行分组计算。
+    从效率来看，运用data.table是数据框计算的数十倍甚至更多，且处理10~100G中型数据效率更快速。
+    
+###内存管理
+
+    在处理这类耗内存的数据集，及时关注内存消耗，并进行必要的内存管理十分必要，有一些小方法可以实现它，主要有：
+
+1. 运用gc()函数清空缓存，并跟踪内存使用情况；
+
+2. 运用rm()函数清除不用的变量，并及时用gc()释放内存；
+
+3. 运用memory.limit()函数查看或设置R最大内存使用；
+
+4. 运用memory.size(F)查看当前R已使用的内存，memory.size(T)查看已分配的内存；
+
+5. 运用object.size(x)来查看对象占用内存的大小；
+
+
+

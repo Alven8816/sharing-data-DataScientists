@@ -1,0 +1,189 @@
+---
+title: "NLP——自然语言处理（三）text2vec包"
+author: "余文华"
+date: "2017年2月21日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## text2vec简介
+    text2vev包是由Dmitriy Selivanov于2016年10月所写的R包。此包主要是为文本分析和自然语言处理提供了一个简单高效的API框架。由于其由C++所写，同时许多部分（例如GloVe）都充分运用RcppParallel等包进行并行化操作，处理速度得到加速。并且采样流处理器，可以不必把全部数据载入内存才进行分析，有效利用了内存，可以说该包是充分考虑了NLP处理数据量庞大的现实。
+    text2vec包也可以说是一个文本分析的生态系统，可以进行向量化操作（Vectorization）、Word2Vec的“升级版GloVe词嵌入表达、主题模型分析以及相似性度量四大方面，可以说非常的强大和实用。详情可见[官网]( http://text2vec.org/index.html)
+    现在就以官网给出的例子，分别来看看这个生态系统的使用吧！
+
+##一、向量化操作——进行情感分析
+
+###1.1 基本步骤    
+    在前一期已经对基础文本分析做了一个简单的小结，运用text2vec包进行文本分析也大同小易，主要分三步：
+1. 构建一个文档-词频矩阵（document-term matrix,DTM）或者词频共现矩阵（ term-co-occurrence matrix,TCM）;
+
+2. 在DTM基础上拟合模型，包括文本（情感）分类、主题模型、相似性度量等。并进行模型的调试和验证；
+
+3. 最终在新的数据上运用拟合好的模型。
+
+###1.2 情感分析Demo
+    以text2vec包提供的影评数据为例，对5000条电影评论进行情感分析（评论正面VS.负面）。首先加载text2vec包，并运用data.table包进行数据读取。
+    
+```{r}
+#install.packages("text2vec")
+library(text2vec)
+library(data.table) 
+```
+
+####数据准备
+
+    首先运用Setkey为数据设置唯一的“主键”，并划分为训练集和测试集。
+```{r}
+data("movie_review")  
+setDT(movie_review)  
+setkey(movie_review, id)  
+set.seed(2016L)  
+all_ids = movie_review$id  
+train_ids = sample(all_ids, 4000)  
+test_ids = setdiff(all_ids, train_ids)  
+train = movie_review[J(train_ids)]  
+test = movie_review[J(test_ids)] 
+```
+
+####文档向量化
+    
+    文档向量化是text2vec的主要步骤，创建词表（vocabulary）前需要设置itoken分词迭代器，然后用create_vocabulary创建词表，形成语料文件，构建DTM矩阵。
+```{r}
+prep_fun = tolower  
+#代表词语划分到什么程度
+tok_fun = word_tokenizer  
+#步骤1.设置分词迭代器
+it_train = itoken(train$review,   
+             preprocessor = prep_fun,   
+             tokenizer = tok_fun,   
+             ids = train$id,   
+             progressbar = FALSE)
+#步骤2.分词
+#消除停用词
+stop_words = c("i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours")  
+#分词函数
+vocab = create_vocabulary(it_train, stopwords = stop_words) 
+#对低频词的修建
+pruned_vocab = prune_vocabulary(vocab,   
+                                term_count_min = 10,   #词频，低于10个都删掉
+                                doc_proportion_max = 0.5,  
+                                doc_proportion_min = 0.001) 
+#步骤3.设置形成语料文件
+vectorizer = vocab_vectorizer(pruned_vocab)
+#进行hash化，提效降内存
+#2-ngrams增加文字信息量
+#h_vectorizer = hash_vectorizer(hash_size = 2 ^ 14, ngram = c(1L, 2L))  
+#步骤4.构建DTM矩阵
+dtm_train = create_dtm(it_train, vectorizer)
+#=========================================
+#优化方法
+#标准化，加入惩罚项
+#dtm_train_l1_norm = normalize(dtm_train, "l1")
+#转为TFIDF步骤
+#1.设置TFIDF编译器
+#tfidf = TfIdf$new()  
+#2.转换成TFIDF格式
+#dtm_train_tfidf = fit_transform(dtm_train, tfidf)
+#dtm_test_tfidf  = create_dtm(it_test, vectorizer) %>%   
+#  transform(tfidf)
+#或者写为：
+#dtm_test_tfidf  = create_dtm(it_test, vectorizer) %>%   
+#  transform(tfidf)  
+```
+
+####基于Logistic的情感标注
+    
+    运用glmnet包中的binomial函数族进行Logistic的情感标注。并设置alpha=1惩罚项进行L1惩罚。（不懂的同志出门左转，在公众号历史文章“正则化及其R实现”查看）。
+```{r}
+library(glmnet)  
+NFOLDS = 4  
+glmnet_classifier = cv.glmnet(x = dtm_train, y = train[['sentiment']],   
+                              family = 'binomial',   
+                              # L1 penalty  
+                              alpha = 1,  
+                              # interested in the area under ROC curve  
+                              type.measure = "auc",  
+                              # 5-fold cross-validation  
+                              nfolds = NFOLDS,  
+                              # high value is less accurate, but has faster training  
+                              thresh = 1e-3,  
+                              # again lower number of iterations for faster training  
+                              maxit = 1e3)  
+plot(glmnet_classifier)
+```
+
+####验证集效果
+    最后验证测试集效果，AUC为0.9185.除了以上的基础分析外，还可以对数据进行标准化、TF-IDF或hash化来提高执行的效率和模型准确性。
+```{r}
+it_test = test$review %>%   
+  prep_fun %>%   
+  tok_fun %>%   
+  itoken(ids = test$id,   
+         # turn off progressbar because it won't look nice in rmd  
+         progressbar = FALSE)  
+  
+dtm_test = create_dtm(it_test, vectorizer)  
+  
+preds = predict(glmnet_classifier, dtm_test, type = 'response')[,1]  
+glmnet:::auc(test$sentiment, preds)  
+```
+
+##二、Glove词嵌入
+
+
+    在Tomas Mikolov等提出word2vec后，关于词向量表示的文献就层出不穷。斯坦福大学提出GloVe: [Global Vectors for Word Representation](http://nlp.stanford.edu/projects/glove/),主要是在词语共现矩阵下因式分解。经过代码优化GloVe性能提高了2-3倍，是通过单精度浮点运算[4]。现在我们就通过text2vec实现一个word2vec。
+### 读取数据
+    给定一个语言规则的例子：
+     “paris,”之于 “france,” 等于 “germany” 至于——，我们期望这个结果为“berlin”。
+    我们以Wikipedia数据为语料进行demo。
+    
+```{r}
+text8_file = "./text8"
+if (!file.exists(text8_file)) {
+  download.file("http://mattmahoney.net/dc/text8.zip", "./text8.zip")
+  unzip ("./text8.zip", files = "text8", exdir = "./")
+}
+wiki = readLines(text8_file, n = 1, warn = FALSE)
+```
+
+### 创建词汇表
+
+    通过首先tokens迭代，运用流处理API节省内存使用(运用text2vec操作raw数据的首要动作)。并设置prune_vocabulary参数进行清洗最小词频。最终留下71290个terms。创建共现矩阵tcm。
+```{r}
+# Create iterator over tokens
+tokens <- space_tokenizer(wiki)
+# Create vocabulary. Terms will be unigrams (simple words).
+it = itoken(tokens, progressbar = FALSE)
+vocab <- create_vocabulary(it)
+vocab <- prune_vocabulary(vocab, term_count_min = 5L)
+# Use our filtered vocabulary
+vectorizer <- vocab_vectorizer(vocab, 
+                               # don't vectorize input
+                               grow_dtm = FALSE, 
+                               # use window of 5 for context words
+                               skip_grams_window = 5L)
+tcm <- create_tcm(it, vectorizer)
+```
+    
+###运用GloVe对TCM进行因子分解
+
+    text2vec使用GloVe算法进行并行化随机梯度下降，默认情况下将使用计算机的所有核并行运算，当然也可以指定threads。
+```{r}
+#RcppParallel::setThreadOptions(numThreads = 4)
+glove = GlobalVectors$new(word_vectors_size = 50, vocabulary = vocab, x_max = 10)
+glove$fit(tcm, n_iter = 20)
+```
+
+
+## 参考文献
+
+>-[1] Deep Learning 实战之word2vec <http://wenku.baidu.com/link?url=GIaePrya8VtcNJIFrC91LNqlekzsX07K8dA-kRppUITgF5eyofvvz2wgmZ32DTJKa3HY-78s0Gk64Z7GlQklXvI-UEdhkWj6IIzgU6Gmr7q>
+
+>- [2]斯坦福大学深度学习与自然语言处理第二讲——词向量<>
+
+>- [3]R+NLP：text2vec包——New 文本分析生态系统 No.1（一,简介）<http://blog.csdn.net/sinat_26917383/article/details/53161863>
+>- [4]R+NLP︱text2vec包——BOW词袋模型做监督式情感标注案例（二,情感标注）<http://blog.csdn.net/sinat_26917383/article/details/53260117>
+>- [5]R+NLP︱text2vec包——四类文本挖掘相似性指标 RWMD、cosine、Jaccard 、Euclidean （三,相似距离）<http://blog.csdn.net/sinat_26917383/article/details/53286009>
+>- [6]text2vec <http://text2vec.org/glove.html>
