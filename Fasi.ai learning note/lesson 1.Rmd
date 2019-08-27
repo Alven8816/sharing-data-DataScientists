@@ -1,0 +1,141 @@
+---
+title: "深度学习实战（一）—— 7行代码实现VGG图像识别"
+author: "余文华"
+date: "2017年6月10日"
+output: 
+  html_document: 
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE, include = TRUE)
+```
+
+# 文前说明
+
+    本文是学习《Fasi.ai深度学习实战课程》的学习笔记第一课。Fast.ai是Jeremy Howard为结果导向人群开设的深度学习在线课程，主张实用性和大众应用，是“对待深度学习‘认真的人’”入门及应用的巨大财富。Jeremy Howard是Enlitic、FastMail、Optimal Decisions Group三家科技公司的创始人兼CEO，是大数据竞赛平台Kaggle的前主席和首席科学家，是美国奇点大学（Singularity University）最年轻的教职工，是在2014达沃斯论坛上发表主题演讲的全球青年领袖，他在 TED 上的演讲《The wonderful and terrifying implications of computers that can learn》收获了近200万的点击量。[1]
+    本人以真正的态度，花了2周多是业余时间"学完了"lesson 1 的课程，希望通过学习笔记的形式，给大家分享，后续会继续该内容的学习。
+    
+# AWS部署
+
+    对于我这中没有GPU的人，想玩深度学习实在是伤不起，还好我们有亚马逊AWS，如果你的深度学习任务并不是很大并不需要反复很长久时间的运行，AWS是个很划算的解决方法，通过GPU instance p2.xlarge，基本可以应付常见的深度学习任务，但问题它0.9美元/小时的费用也是大家需要注意的。（土豪此段可以略过）
+    下面就AWS如何部署深度学习实例，进行简单的介绍。（这里不详细说明主要是如果自己想尝试部署的话，下去还得仔细看《实战课程》视频为好，一来篇幅有限，二来确实感觉每个人在部署上或多或少会遇到不一样的问题，也不愿意以偏概全，完成课程整个操作还需要查看wiki Fasi.ai 官网来学习和实现）。
+    
+## 1. 运用AWS亚马逊GPU配置实例
+
+
+    显然首先你要注册AWS账号，并绑定适合全球支付的信用卡。然后进入AWS console的IAM用户管理界面创建一个用户，通过此用户创建GPU server。具体安装详情可参考（翻墙）Jeremy Howard在youtou上的视频 [video walkthrough](https://www.youtube.com/watch?v=8rjRfW4JM2I)。
+
+## 2. 在Gygwin上安装AWS-CLI命令操作
+    
+    AWS-CLI运行用户运用命令行进行aws操作。对于非linux用户可通过cygwin插件，进行bash操作。注意在安装cygwin后如果直接（按视频操作）pip install awscil，默认会安装在window的anaconda python中，为保证在cygwin中的python中安装，需要有如下步骤：
+    1. 卸载已经安装的awscli
+```{}
+pip uninstall awscli
+```
+    2. 下载apt-cyg并实现安装
+```{}
+wget rawgit.com/transcode-open/apt-cyg/master/apt-cyg
+install apt-cyg./bin
+```
+    3. 运用apt-cyg安装python
+```{}
+apt-cyg install python
+```
+    4. 下载并在python中安装pip
+```{}
+wget http://boostrap.pypa.io/get-pip.py
+python get-pip.py
+```
+    5. 安装awscli
+```{}
+pip install awscli
+```
+    注意操作前需清理aws命令的cache “hash -d aws”.
+    安装完成后，可通过输入aws或aws ec2 describe-instances 查看安装属性。
+    
+## 3. 进行AWS实例连接
+
+    现在进行aws的实例配置，输入aws configure 会提示输入刚刚aws用户的access key ID及secret Access key, region name 请输入us-west-2, output 输入text，这样电脑就与AWS实例进行连接了。
+    按照http://wiki.fast.ai/index.php/AWS_install提示，下载setup_p2.sh,并输入“bash setup_p2.sh” 即可打包安装好Jeremy Howard事先准备的AMI镜像了，里面已经为大家安装好了anaconda及python配套library，所以非常方便。同时在自己的AWS控制面板上，也多出了一个正在运行的实例。
+    
+## 4. 在远程instance上实现Jupyter notebook
+
+    通过输入以下代码就可以启动到远程服务器中了。
+```{}
+ ssh i /home/Dinesh/.ssh/aws-key.pem ubuntu@ec2-xx-xxx-xxx-xxx.us-west-2.compute.amazonaws.com
+```
+
+    我们可以输入“jupyter notebook” 进入到jupyter notebook中，在网页中输入ec2-xx-xxx-xxx-xxx.us-west-2.compute.amazonaws.com:8888就打开熟悉的jupyter notebook页面，密码输入统一的“”dl_course",就可以远程启动jupyter notebook了。
+    
+# VGG16深度学习模型模拟
+    
+    下面就可以运用jupyter notebook开始跑深度学习模型了。在此之前，我们需要大量的数据，放入远程GPU服务器中。这里以课程中kaggle比赛的Dogs vs. Cats 数据为例进行说明。
+
+## 1. 安装Kaggle-CLI
+
+    为下载模型数据，首先我们得到kaggle中下载数据，这就需要先安装kaggle命令行操作。同样首先要求去kaggle注册属于自己的账号，然后输入：
+```{}
+pip install kaggle-cli
+kg config -g -u `username` -p `password` -c `competition`
+kg download
+```
+    下载Dogs vs. Cats 数据，“competition”要为“dogs-vs-cats-redux-kernels-edition”。同时安装unzip 解压数据集到对应目标目录中。
+```{}
+sudo apt install unzip
+unzip train.zip
+unzip test.zip
+```
+
+## 2. 目录操作及准备
+
+    在教程中，Jeremy Howard特意强调了分类目录的重要性，按照train、validation和test对数据进行分割，并且，同一种类型（如狗狗）放入一个文件中，方便模型模拟。值得启发的是，他特意强调了可以建立一个sample文件夹，事先在小数据集中运用fine tuning进行模型训练，节约时间也方便结果输出。
+    
+## 3. 实现VGG16模型模拟
+
+    最后，就可以运用简单的7行python代码实现一个VGG了，事先在其官网gethub下载utils.py 和VGG.py文件，并解压。确定好数据path，加载相关的python库。只运用7行代码就可以实现一个VGG分类了。
+    
+```{python}
+%matplotlib inline #方便jupyter notebook 输出图像
+
+#path = "data/dogscats/"
+
+#加载库文件
+from __future__ import division,print_function
+import os, json
+from glob import glob
+import numpy as np
+np.set_printoptions(precision=4, linewidth=100)
+from matplotlib import pyplot as plt
+import utils; reload(utils)
+from utils import plots
+
+#7行VGG模型操作
+#设定batch大小
+batch_size=64
+# 加载vgg16库
+from vgg16 import Vgg16
+#先设定一个vgg对象
+vgg = Vgg16()
+# 在train和validation上输入batch大小的图像，同一类必须放同一文件夹中
+batches = vgg.get_batches(path+'train', batch_size=batch_size)
+val_batches = vgg.get_batches(path+'valid', batch_size=batch_size*2)
+# 运用fine tune 站在巨人肩膀上进行训练
+vgg.finetune(batches)
+#最后运用fit进行拟合模型，nb_epoch=1为训练1轮
+vgg.fit(batches, val_batches, nb_epoch=1)
+```
+    
+    最后，一定要记得关闭aws的实例，否则你的信用卡一直在扣钱，还是以美元计价的哦。在fasi.ai中也给出了别名操作的方法，可以运用简单的aws-stop命令行实现实例的停止，即加载aws-alias.sh，但本人没安装成功。
+
+# 写在文后
+
+    在运用AWS过程中确实也遇到过一些问题，比如由于在美国oregon，远程操作的时候延迟非常大，使用扣费时间计算也不显示，自己得时刻保持警惕。当然在配置过程中也遇到过各种各样的问题，但好在通过wiki中的fasi官网[http://wiki.fast.ai/]及课程论坛细心学习加肯花时间，还是都能找到答案的。
+    最后，写点说明吧，有时个人维护公众号，并且只进行内容运营，花费的精力和时间其实非常大，有时也出现力不从心的情况，也有人建议把内容运营改下，通过转发文章吸引流量，但想想办这个公众号的初衷“记录学习心得，分享数据科学的乐趣和魅力，与一群热爱数据，热爱学习的朋友共同进步”，虽然更新得慢点，但只要对自己，对他人有帮助，也算是值得。可能以后的文章会更新得慢点，但最低一月一更吧！一起共同努力，也感谢大家1年多来的关注和支持。
+
+# 参考资料
+>- Enlitic创始人Jeremy Howard专访：我眼中的深度学习与数据科学 <https://www.leiphone.com/news/201701/awTR1CTynz0tTsc0.html>
+>- TED 上的演讲《The wonderful and terrifying implications of computers that can learn》, <https://www.ted.com/talks/jeremy_howard_the_wonderful_and_terrifying_implications_of_computers_that_can_learn>
+>- <http://wiki.fast.ai/index.php/Main_Page>
+>- githbu fastai/courses <https://github.com/Alven8816/courses/tree/master/deeplearning1/nbs>
+

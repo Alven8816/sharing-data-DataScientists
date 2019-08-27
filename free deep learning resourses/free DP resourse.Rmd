@@ -1,0 +1,114 @@
+---
+title: "Deep Learning & Neural Network 免费学习资源"
+author: "余文华"
+date: "2017年8月20日"
+output: 
+  html_document: 
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+    想必最近都被吴恩达Deeplearning.ai的深度学习课程刷屏了，不过最近看到一篇介绍对深度学习和神经网络初学者的free Resources,感觉也非常不错，特此总结下，分享给大家。
+    
+    吴恩达Deeplearning.ai的深度学习课程链接：
+<https://www.coursera.org/specializations/deep-learning>
+<https://www.deeplearning.ai/>
+
+    下面言归正传，由于都是国外学习资源，请科学上网。不过深度学习的教学资源，确实国外要优质很多。
+
+##一、课程（Courses）
+
+###1.1. [Machine Learning by Andrew Ng](https://www.coursera.org/learn/machine-learning)
+
+    如果你是完全的机器学习、神经网络新手，这个课程应该是你最好的first-step.吴恩达的这门机器学习课程在国内的知晓率也是不言而喻的。课程广泛的讲授了机器学习、深度学习、数据挖掘、神经网络等，你甚至只需要基本的高等数据知识（哪怕已经忘得差不多了），你仍然可以听懂课程的绝大多数内容。结合实践案例，它确实是一个不可多得的入门教程。
+    
+###1.2.[Neural Network Course on Coursera](https://www.coursera.org/learn/neural-networks)
+
+    该课程在神经网络领域得到很高的赞誉，虽然课程开始于2013年，但运用神经网络于声音、图像识别，模拟自然语言等，仍然是一个基础教程。通过8 weeks课程，至少每周7-9 hours，课程需要有一定的python\Octave\Matlab和向量、微积分、代数等先期知识储备。
+
+###1.3.[Carnegie Mellon University – Deep Learning](http://deeplearning.cs.cmu.edu/)
+
+    卡耐基梅隆大学的深度学习在线课程虽然结束于2015年10月，但我们可以获得课程宝贵的slides及其他在线学习材料，通过这些优质的slides，可以让你快速理解深度学习一些知识。它可能不推荐作为入门学习材料，但对于中级学生是不可多得的学习材料。
+    
+###1.4.[Deep Learning for NLP](https://nlp.stanford.edu/courses/NAACL2013/)
+
+    根据NAACL HLT(the North American Chapter of the Association for Computational Linguistics: Human Language Technologies)会议整理得到，可以在网站中获得slides及相应的videos。是NLP学习新手学习Logistic 回归到更深入学习的机器学习算法很好的学习材料。
+    
+###1.5.[Deep Learning for Computer Vision](http://llcao.net/cu-deeplearning15/index.html)
+
+    课程由哥伦比亚大学在2015年开设，主要关注于深度学习技术在计算机视觉及自然语言处理领域。课程主要以theano为编程工具，需要有pyhon、NumPy及机器学习相关知识。
+    
+###1.6.[Deep Learning](http://cilvr.cs.nyu.edu/doku.php?id=courses:deeplearning2014:start)
+
+    由Yann LeCunn于2014年开设，被作为研究生课程，slides和videos均可获取，非常适合初学者。
+
+##二、书籍（Books）
+
+###2.1 [Deep Learning](http://www.deeplearningbook.org/)
+
+    书籍由Ian Goodfellow and Yoshua Bengio and Aaron Courville撰写，最后一次更新于2016年12月，作为一本理解机器学习、模式识别的统计技术的学习工具书，全书共20章分3大部分：一是数学和机器学习应用基础，讲述线性回归、概率论、机器学习基础；二是深度网络模型实践，讲述BP网络、正则化、参数优化、卷积网络、递归网络等；三是深度学习研究，包括线性因子模型、自编码器、表征学习、Monte Carlo等更深入的内容。
+    
+###2.2 [Neural Networks and Deep Learning](http://neuralnetworksanddeeplearning.com/about.html)
+
+    由Michael Neilson撰写，如果你擅长自学，它不失为一个online学习的好去处。全书仅有6章，每章都有详尽的阐释深度学习相关概念。
+    
+##三、博客（Blogs）
+
+###3.1 [Introduction to Neural Networks](http://natureofcode.com/book/chapter-10-neural-networks/)
+
+    它是Daniel Shiffman撰写的《the NATURE of Code》第10章内容：Neural Networks，适合初学者，在阅读中你会发现风格通俗易懂，作者从零开始接受神经网络，同时给出python 代码辅助实现，你不仅学习“是什么”还可以知道“为什么”。
+    
+###3.2[Hacker's guide to Neural Networks](http://karpathy.github.io/neuralnets/)
+
+    虽然内容由Javascript代码实现，但有许多理论性概念阐释得非常易懂，仅需要很少的数学知识，来综合理解各个部分。
+    
+###3.3 [Recurrent Neural Networks Tutorial, Part 1](http://www.wildml.com/2015/09/recurrent-neural-networks-tutorial-part-1-introduction-to-rnns/),[part 2](http://www.wildml.com/2015/09/recurrent-neural-networks-tutorial-part-2-implementing-a-language-model-rnn-with-python-numpy-and-theano/),[part 3](http://www.wildml.com/2015/10/recurrent-neural-networks-tutorial-part-3-backpropagation-through-time-and-vanishing-gradients/),[part 4](http://www.wildml.com/2015/10/recurrent-neural-network-tutorial-part-4-implementing-a-grulstm-rnn-with-python-and-theano/)
+
+    当你已经对深度学习基础有较好掌握，就可以实现进阶啦，卷积神经网络“4部曲”，是绝好的指导你成为RNN高手的宝典。注意循序渐进，各个击破。
+
+###3.4 [Deep Learning Tutorial by Stanford](http://deeplearning.stanford.edu/wiki/index.php/UFLDL%E6%95%99%E7%A8%8B) 
+
+    本教程由 Andrew Ng, Jiquan Ngiam等完成。是至今为止被很多地方强烈推荐的深度学习资源教程。将阐述无监督特征学习和深度学习的主要观点。通过学习，你也将实现多个功能学习/深度学习算法。有很好的中文支持哦。也算是进阶神器了吧。建议在完成Andrew Ng的机器学习课程后开始学习。
+
+###3.5 [Unreasonable Effectiveness of RNN](http://karpathy.github.io/2015/05/21/rnn-effectiveness/)
+
+    属于学习RNN的一些补充资源。以RNN基础理论开始，到更深入的构造特征模型，它能帮助你实现神经网络在多个领域的应用。
+    
+##四、视频（vedios）
+
+###4.1 [Complete Tutorial on Neural Networks](https://www.youtube.com/watch?list=PL6Xpj9I5qXYEcOhn7TqghAJ6NAPrNmUBH&v=SGZ6BttHMPw) 
+
+    这是个非常全面的神经网络指导视频list，在YouTube上，你可以按需学习。
+    
+###4.2 [Deep Learning Lectures](https://www.youtube.com/watch?v=PlhFWT7vAEw&index=16&list=PLE6Wd9FR--EfW8dtjAuPoTuPcqmOV53Fu)
+
+    Oxford大学2015年深度学习系列课程，主讲人 Nando de Freitas，课程涵盖了从线性模型、Logistic回归、正则化到RNN等的广泛的内容。课程的配套资料在[这里](https://www.cs.ox.ac.uk/people/nando.defreitas/machinelearning/)
+    
+###4.3[Introduction to Deep Learning with Python](https://www.youtube.com/watch?v=S75EdAcXHKk)
+
+    看了这么多深度学习理论，是时候运用python进行实践了。这1个小时左右的深度学习python实现theano值得推荐。这是相应的[slides](https://www.slideshare.net/indicods/deep-learning-with-python-and-the-theano-library)和[Code](https://github.com/Newmu/Theano-Tutorials)
+    
+###4.4[Deep Learning Summer School, Montreal 2015](http://videolectures.net/deeplearning2015_montreal/)
+
+    这是montreal 2015深度学习暑期学校的学习视频。这些视频涵盖了深度学习的高级主题，不太推荐初学者，但对于有一定机器学习理论的同学一定得看看，它将带你进入深度学习新的认识水平。
+    
+    其他的资源也可以从[这里](https://www.analyticsvidhya.com/blog/2015/07/top-youtube-videos-machine-learning-neural-network-deep-learning/)找到。
+    
+##五、研究论文（Research Papers）
+
+    本可以列出大量的深度学习研究论文，但显然这是有违初衷的。因此为强调是“best resources”， 这里列出了具有开创性意义的论文：
+
+1. [Deep Learning in Neural Networks](https://arxiv.org/pdf/1404.7828.pdf)
+
+2. [Introduction to Deep Learning](https://www.nature.com/articles/nature14539.epdf?referrer_access_token=K4awZz78b5Yn2_AoPV_4Y9RgN0jAjWel9jnR3ZoTv0PU8PImtLRceRBJ32CtadUBVOwHuxbf2QgphMCsA6eTOw64kccq9ihWSKdxZpGPn2fn3B_8bxaYh0svGFqgRLgaiyW6CBFAb3Fpm6GbL8a_TtQQDWKuhD1XKh_wxLReRpGbR_NdccoaiKP5xvzbV-x7b_7Y64ZSpqG6kmfwS6Q1rw%3D%3D&tracking_referrer=www.nature.com)
+
+3. [Deep Boltzmann Machines](http://www.utstat.toronto.edu/~rsalakhu/papers/dbm.pdf)
+
+4. [Learning Deep Architectures for AI](http://www.iro.umontreal.ca/~lisa/publications2/index.php/publications/show/239)
+
+5. [Deep Learning of Representations: Looking Forward](https://arxiv.org/pdf/1305.0445.pdf)
+
+6. [Gradient based training for Deep Architechture](https://arxiv.org/pdf/1206.5533.pdf)
